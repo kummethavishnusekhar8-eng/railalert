@@ -1,0 +1,554 @@
+{
+  "settings": {
+    "pollingIntervalMinutes": 5,
+    "autoCheckEnabled": true,
+    "simulationMode": true,
+    "pnrProvider": "free-auto",
+    "email": {
+      "enabled": true,
+      "service": "gmail",
+      "host": "smtp.gmail.com",
+      "port": 587,
+      "user": "",
+      "pass": "",
+      "from": "\"RailAlert\" <notifications@railalert.internal>"
+    },
+    "callmebot": {
+      "enabled": true,
+      "phone": "9676802488",
+      "apiKey": "+34 644 91 96 80"
+    },
+    "telegram": {
+      "enabled": false,
+      "botToken": "",
+      "chatId": ""
+    },
+    "ntfy": {
+      "enabled": true,
+      "topic": "railalert-pnr-updates"
+    },
+    "sms": {
+      "enabled": false,
+      "provider": "twilio",
+      "accountSid": "",
+      "authToken": "",
+      "fromPhone": ""
+    },
+    "whatsapp": {
+      "enabled": true,
+      "provider": "callmebot",
+      "fromWhatsApp": ""
+    },
+    "rapidApi": {
+      "apiKey": "",
+      "apiHost": "irctc-indian-railway-pnr-status.p.rapidapi.com"
+    }
+  },
+  "pnrs": [
+    {
+      "pnr": "1003449638",
+      "phoneNumber": "9676802488",
+      "email": "vickyrb12488@gmail.com",
+      "active": true,
+      "trainNumber": "12708",
+      "trainName": "NZM TPTY SF EXP",
+      "fromStation": "Delhi Hazrat Nizamuddin",
+      "toStation": "Tadipatri",
+      "dateOfJourney": "30-12-2026",
+      "class": "3A",
+      "chartPrepared": false,
+      "passengers": [
+        {
+          "number": 1,
+          "name": "Passenger 1",
+          "bookingStatus": "RAC  29",
+          "currentStatus": "RAC  24",
+          "coach": null,
+          "berth": 24,
+          "berthType": null
+        },
+        {
+          "number": 2,
+          "name": "Passenger 2",
+          "bookingStatus": "RAC  30",
+          "currentStatus": "RAC  25",
+          "coach": null,
+          "berth": 25,
+          "berthType": null
+        },
+        {
+          "number": 3,
+          "name": "Passenger 3",
+          "bookingStatus": "RAC  31",
+          "currentStatus": "RAC  26",
+          "coach": null,
+          "berth": 26,
+          "berthType": null
+        }
+      ],
+      "lastChecked": "2026-11-21T09:25:00.154Z",
+      "lastStatusChange": "2026-11-21T09:23:02.105Z",
+      "createdAt": "2026-11-21T09:23:02.105Z",
+      "isRealData": true,
+      "history": [
+        {
+          "timestamp": "2026-11-21T09:23:02.105Z",
+          "summary": "PNR registered with live status: P1: RAC  24, P2: RAC  25, P3: RAC  26"
+        }
+      ]
+    }
+  ],
+  "notifications": [
+    {
+      "id": "c874f2b8-2a56-4387-b70c-6a9809dd2e22",
+      "pnr": "1003449638",
+      "type": "email",
+      "recipient": "vickyrb12488@gmail.com",
+      "title": "🚆 [RailAlert Confirmed] Now Tracking PNR 1003449638 (12708)",
+      "message": "Tracking started for PNR 1003449638. We will email you status updates automatically.",
+      "status": "delivered (free simulation)",
+      "timestamp": "2026-11-21T09:23:02.111Z",
+      "previewContent": "\n      <div style=\"font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;\">\n        <div style=\"background: #059669; color: #ffffff; padding: 20px 24px;\">\n          <h2 style=\"margin: 0 0 6px 0;\">PNR Tracking Activated!</h2>\n          <p style=\"margin: 0; opacity: 0.9; font-size: 14px;\">We are now actively monitoring PNR <strong>1003449638</strong> for you.</p>\n        </div>\n        <div style=\"padding: 24px; color: #1e293b; font-size: 14px; line-height: 1.6;\">\n          <p>Hello,</p>\n          <p>Your railway reservation has been added to our automated monitoring engine. You will receive an instant notification whenever:</p>\n          <ul style=\"color: #047857; font-weight: 600;\">\n            <li>Your Waiting List drops or moves to RAC</li>\n            <li>Your ticket is Confirmed (CNF) with Coach & Berth allocation</li>\n            <li>The final reservation chart is prepared</li>\n          </ul>\n          <div style=\"background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin: 16px 0;\">\n            <p style=\"margin: 4px 0;\"><strong>Train:</strong> 12708 - NZM TPTY SF EXP</p>\n            <p style=\"margin: 4px 0;\"><strong>Route:</strong> Delhi Hazrat Nizamuddin &rarr; Tadipatri</p>\n            <p style=\"margin: 4px 0;\"><strong>Journey Date:</strong> 30-12-2026</p>\n            <p style=\"margin: 4px 0;\"><strong>Current Status:</strong> <span style=\"color: #059669; font-weight: bold;\">P1: RAC  24, P2: RAC  25, P3: RAC  26</span></p>\n          </div>\n          <p style=\"font-size: 12px; color: #64748b; margin-top: 24px;\">Dispatched automatically by RailAlert.</p>\n        </div>\n      </div>\n    "
+    },
+    {
+      "id": "c6583ae6-a48d-4764-a298-cbf10dbfffea",
+      "pnr": "1003449638",
+      "type": "whatsapp",
+      "recipient": "9676802488",
+      "title": "Registration Confirmation to 9676802488",
+      "message": "🚆 *RailAlert Tracking Activated*\n────────────────────\nYour PNR `1003449638` is now actively monitored!\n\n• *Train:* 12708 - NZM TPTY SF EXP\n• *Route:* Delhi Hazrat Nizamuddin ➔ Tadipatri\n• *Date:* 30-12-2026 | Class: 3A\n• *Current Status:* P1: RAC  24, P2: RAC  25, P3: RAC  26\n• *Chart Status:* ⏳ Chart Not Prepared\n\n📲 *You will automatically receive an instant message the moment your waiting list drops, seat gets confirmed, or chart is prepared!*",
+      "status": "failed",
+      "error": "CallMeBot: ERROR: apikey can not be <b>empty</b> or it has an <b>invalid format</b>\n",
+      "timestamp": "2026-11-21T09:23:02.111Z"
+    },
+    {
+      "id": "982a8c5f-546e-4f46-98d3-f2ed180f28b6",
+      "pnr": "1003449638",
+      "type": "mobile-push",
+      "recipient": "ntfy.sh/railalert-9676802488",
+      "title": "Registration Push Alert",
+      "message": "PNR 1003449638 registered! Train: 12708 (NZM TPTY SF EXP)\nRoute: Delhi Hazrat Nizamuddin ➔ Tadipatri\nStatus: P1: RAC  24, P2: RAC  25, P3: RAC  26\nChart: NOT PREPARED",
+      "status": "delivered",
+      "timestamp": "2026-11-21T09:23:02.111Z"
+    },
+    {
+      "id": "16ef0cc6-dedd-4898-b6f4-eceb97164cde",
+      "pnr": "1003449638",
+      "type": "in-app",
+      "recipient": "Browser Dashboard",
+      "title": "PNR 1003449638 Registration Confirmed",
+      "message": "Tracking started. Current Status: P1: RAC  24, P2: RAC  25, P3: RAC  26. Instant alerts enabled for 9676802488.",
+      "status": "delivered",
+      "timestamp": "2026-11-21T09:23:02.111Z",
+      "train": "12708 - NZM TPTY SF EXP"
+    },
+    {
+      "id": "d284b67b-f79a-4882-8305-b931fd4b8160",
+      "pnr": "1003449638",
+      "type": "whatsapp",
+      "recipient": "9676802488",
+      "title": "Registration Confirmation to 9676802488",
+      "message": "🚆 *RailAlert Tracking Activated*\n────────────────────\nYour PNR `1003449638` is now actively monitored!\n\n• *Train:* 12708 - NZM TPTY SF EXP\n• *Route:* Delhi Hazrat Nizamuddin ➔ Tadipatri\n• *Date:* 30-12-2026 | Class: 3A\n• *Current Status:* P1: RAC  24, P2: RAC  25, P3: RAC  26\n• *Chart Status:* ⏳ Chart Not Prepared\n\n📲 *You will automatically receive an instant message the moment your waiting list drops, seat gets confirmed, or chart is prepared!*",
+      "status": "failed",
+      "error": "CallMeBot: ERROR: apikey can not be <b>empty</b> or it has an <b>invalid format</b>\n",
+      "timestamp": "2026-11-21T09:16:07.225Z"
+    },
+    {
+      "id": "4eb5dc7c-3bfc-4df7-acdc-5f041bf1f8ed",
+      "pnr": "1003449638",
+      "type": "mobile-push",
+      "recipient": "ntfy.sh/railalert-9676802488",
+      "title": "Registration Push Alert",
+      "message": "PNR 1003449638 registered! Train: 12708 (NZM TPTY SF EXP)\nRoute: Delhi Hazrat Nizamuddin ➔ Tadipatri\nStatus: P1: RAC  24, P2: RAC  25, P3: RAC  26\nChart: NOT PREPARED",
+      "status": "delivered",
+      "timestamp": "2026-11-21T09:16:07.225Z"
+    },
+    {
+      "id": "bef806d9-cfa7-44ea-b002-c233a34d23be",
+      "pnr": "1003449638",
+      "type": "in-app",
+      "recipient": "Browser Dashboard",
+      "title": "PNR 1003449638 Registration Confirmed",
+      "message": "Tracking started. Current Status: P1: RAC  24, P2: RAC  25, P3: RAC  26. Instant alerts enabled for 9676802488.",
+      "status": "delivered",
+      "timestamp": "2026-11-21T09:16:07.225Z",
+      "train": "12708 - NZM TPTY SF EXP"
+    },
+    {
+      "id": "79231a4f-c84f-4de7-bf9b-9e7ea6071cd8",
+      "pnr": "1003449638",
+      "type": "whatsapp",
+      "recipient": "9676802488",
+      "title": "Registration Confirmation to 9676802488",
+      "message": "🚆 *RailAlert Tracking Activated*\n────────────────────\nYour PNR `1003449638` is now actively monitored!\n\n• *Train:* 12708 - NZM TPTY SF EXP\n• *Route:* Delhi Hazrat Nizamuddin ➔ Tadipatri\n• *Date:* 30-12-2026 | Class: 3A\n• *Current Status:* P1: RAC  24, P2: RAC  25, P3: RAC  26\n• *Chart Status:* ⏳ Chart Not Prepared\n\n📲 *You will automatically receive an instant message the moment your waiting list drops, seat gets confirmed, or chart is prepared!*",
+      "status": "failed",
+      "error": "CallMeBot: ERROR: apikey can not be <b>empty</b> or it has an <b>invalid format</b>\n",
+      "timestamp": "2026-11-21T09:11:04.122Z"
+    },
+    {
+      "id": "6c4860ec-a5b0-4d1d-be9c-6f718b170499",
+      "pnr": "1003449638",
+      "type": "mobile-push",
+      "recipient": "ntfy.sh/railalert-pnr-updates",
+      "title": "Registration Push Alert",
+      "message": "PNR 1003449638 registered! Train: 12708. Status: P1: RAC  24, P2: RAC  25, P3: RAC  26. We will buzz your phone whenever status changes.",
+      "status": "delivered",
+      "timestamp": "2026-11-21T09:11:04.122Z"
+    },
+    {
+      "id": "2423d630-fe25-4ca6-9736-d2a2a9d74c38",
+      "pnr": "1003449638",
+      "type": "in-app",
+      "recipient": "Browser Dashboard",
+      "title": "PNR 1003449638 Registration Confirmed",
+      "message": "Tracking started. Current Status: P1: RAC  24, P2: RAC  25, P3: RAC  26. Instant alerts enabled for 9676802488.",
+      "status": "delivered",
+      "timestamp": "2026-11-21T09:11:04.122Z",
+      "train": "12708 - NZM TPTY SF EXP"
+    },
+    {
+      "id": "d6b93c7e-aed0-4549-bd56-63515644ab0f",
+      "pnr": "1003449638",
+      "type": "whatsapp",
+      "recipient": "9676802488",
+      "title": "Registration Confirmation to 9676802488",
+      "message": "🚆 *RailAlert Tracking Activated*\n────────────────────\nYour PNR `1003449638` is now actively monitored!\n\n• *Train:* 12708 - NZM TPTY SF EXP\n• *Route:* Delhi Hazrat Nizamuddin ➔ Tadipatri\n• *Date:* 30-12-2026 | Class: 3A\n• *Current Status:* P1: RAC  24, P2: RAC  25, P3: RAC  26\n• *Chart Status:* ⏳ Chart Not Prepared\n\n📲 *You will automatically receive an instant message the moment your waiting list drops, seat gets confirmed, or chart is prepared!*",
+      "status": "delivered (free simulation)",
+      "error": null,
+      "timestamp": "2026-11-21T09:05:22.828Z"
+    },
+    {
+      "id": "7500fb71-eb48-4091-a8ae-c8002b70876a",
+      "pnr": "1003449638",
+      "type": "mobile-push",
+      "recipient": "ntfy.sh/railalert-pnr-updates",
+      "title": "Registration Push Alert",
+      "message": "PNR 1003449638 registered! Train: 12708. Status: P1: RAC  24, P2: RAC  25, P3: RAC  26. We will buzz your phone whenever status changes.",
+      "status": "delivered",
+      "timestamp": "2026-11-21T09:05:22.828Z"
+    },
+    {
+      "id": "a4ecb70c-eb87-4c93-879a-f763f9e72bff",
+      "pnr": "1003449638",
+      "type": "in-app",
+      "recipient": "Browser Dashboard",
+      "title": "PNR 1003449638 Registration Confirmed",
+      "message": "Tracking started. Current Status: P1: RAC  24, P2: RAC  25, P3: RAC  26. Instant alerts enabled for 9676802488.",
+      "status": "delivered",
+      "timestamp": "2026-11-21T09:05:22.828Z",
+      "train": "12708 - NZM TPTY SF EXP"
+    },
+    {
+      "id": "0839d290-77e0-4ecc-beac-13c96df224fe",
+      "pnr": "1003449638",
+      "type": "whatsapp",
+      "recipient": "9676802488",
+      "title": "WhatsApp Alert Preview",
+      "message": "🚆 *INDIAN RAILWAYS PNR ALERT*\n────────────────────\n*PNR Number:* `1003449638`\n*Train:* 12708 - NZM TPTY SF EXP\n*Route:* Delhi Hazrat Nizamuddin ➔ Tadipatri\n*Date:* 30-12-2026 | Class: 3A\n*Chart Status:* ⏳ Chart Not Prepared\n\n📢 *UPDATE:* Passenger 1 status changed from [CNF] to [RAC  24]; Passenger 2 status changed from [CNF] to [RAC  25]; Passenger 3 status changed from [CNF] to [RAC  26]\n\n👥 *Passenger Status:*\n• *Passenger 1*: RAC  24 \n• *Passenger 2*: RAC  25 \n• *Passenger 3*: RAC  26 \n────────────────────\n_100% Free Automated Alert by RailAlert_",
+      "status": "delivered (simulated free)",
+      "timestamp": "2026-11-21T09:02:00.496Z"
+    },
+    {
+      "id": "a9e655d6-37fe-4bd6-89de-da6a8b5ff885",
+      "pnr": "1003449638",
+      "type": "mobile-push",
+      "recipient": "ntfy.sh/railalert-pnr-updates",
+      "title": "Free Mobile Push to Phone",
+      "message": "Train 12708 (Delhi Hazrat Nizamuddin ➔ Tadipatri)\nChange: Passenger 1 status changed from [CNF] to [RAC  24]; Passenger 2 status changed from [CNF] to [RAC  25]; Passenger 3 status changed from [CNF] to [RAC  26]\nStatus: P1: RAC  24, P2: RAC  25, P3: RAC  26",
+      "status": "delivered",
+      "error": null,
+      "timestamp": "2026-11-21T09:02:00.496Z"
+    },
+    {
+      "id": "d1fff49f-8493-4084-9468-29801fdcc235",
+      "pnr": "1003449638",
+      "type": "in-app",
+      "recipient": "Browser Dashboard",
+      "title": "PNR 1003449638 Status Changed",
+      "message": "Passenger 1 status changed from [CNF] to [RAC  24]; Passenger 2 status changed from [CNF] to [RAC  25]; Passenger 3 status changed from [CNF] to [RAC  26]",
+      "status": "delivered",
+      "timestamp": "2026-11-21T09:02:00.496Z",
+      "train": "12708 - NZM TPTY SF EXP",
+      "chartStatus": "Not Prepared",
+      "passengers": [
+        {
+          "number": 1,
+          "name": "Passenger 1",
+          "bookingStatus": "RAC  29",
+          "currentStatus": "RAC  24",
+          "coach": null,
+          "berth": 24,
+          "berthType": null
+        },
+        {
+          "number": 2,
+          "name": "Passenger 2",
+          "bookingStatus": "RAC  30",
+          "currentStatus": "RAC  25",
+          "coach": null,
+          "berth": 25,
+          "berthType": null
+        },
+        {
+          "number": 3,
+          "name": "Passenger 3",
+          "bookingStatus": "RAC  31",
+          "currentStatus": "RAC  26",
+          "coach": null,
+          "berth": 26,
+          "berthType": null
+        }
+      ]
+    },
+    {
+      "id": "110998c5-c897-4ff0-8583-c79d7daa9305",
+      "pnr": "1003449638",
+      "type": "whatsapp",
+      "recipient": "9676802488",
+      "title": "WhatsApp Alert Preview",
+      "message": "🚆 *INDIAN RAILWAYS PNR ALERT*\n────────────────────\n*PNR Number:* `1003449638`\n*Train:* 12708 - NZM TPTY SF EXP\n*Route:* Delhi Hazrat Nizamuddin ➔ Tadipatri\n*Date:* 30-12-2026 | Class: 3A\n*Chart Status:* ⏳ Chart Not Prepared\n\n📢 *UPDATE:* Passenger 1 status changed from [RAC  24] to [CNF] (Allocated Coach B3, Berth 24 - Lower Berth); Passenger 2 status changed from [RAC  25] to [CNF] (Allocated Coach B3, Berth 25 - Lower Berth); Passenger 3 status changed from [RAC  26] to [CNF] (Allocated Coach B3, Berth 26 - Lower Berth)\n\n👥 *Passenger Status:*\n• *Passenger 1*: CNF 📍 Coach *B3*, Seat *24* (Lower Berth)\n• *Passenger 2*: CNF 📍 Coach *B3*, Seat *25* (Lower Berth)\n• *Passenger 3*: CNF 📍 Coach *B3*, Seat *26* (Lower Berth)\n────────────────────\n_100% Free Automated Alert by RailAlert_",
+      "status": "delivered (simulated free)",
+      "timestamp": "2026-11-21T09:01:53.575Z"
+    },
+    {
+      "id": "cc60c82a-27b5-454f-bce9-8ce3ead2fdf1",
+      "pnr": "1003449638",
+      "type": "mobile-push",
+      "recipient": "ntfy.sh/railalert-pnr-updates",
+      "title": "Free Mobile Push to Phone",
+      "message": "Train 12708 (Delhi Hazrat Nizamuddin ➔ Tadipatri)\nChange: Passenger 1 status changed from [RAC  24] to [CNF] (Allocated Coach B3, Berth 24 - Lower Berth); Passenger 2 status changed from [RAC  25] to [CNF] (Allocated Coach B3, Berth 25 - Lower Berth); Passenger 3 status changed from [RAC  26] to [CNF] (Allocated Coach B3, Berth 26 - Lower Berth)\nStatus: P1: CNF (B3-24), P2: CNF (B3-25), P3: CNF (B3-26)",
+      "status": "delivered",
+      "error": null,
+      "timestamp": "2026-11-21T09:01:53.575Z"
+    },
+    {
+      "id": "4e4f6218-87aa-42a0-ab2c-85908257d80b",
+      "pnr": "1003449638",
+      "type": "in-app",
+      "recipient": "Browser Dashboard",
+      "title": "PNR 1003449638 Status Changed",
+      "message": "Passenger 1 status changed from [RAC  24] to [CNF] (Allocated Coach B3, Berth 24 - Lower Berth); Passenger 2 status changed from [RAC  25] to [CNF] (Allocated Coach B3, Berth 25 - Lower Berth); Passenger 3 status changed from [RAC  26] to [CNF] (Allocated Coach B3, Berth 26 - Lower Berth)",
+      "status": "delivered",
+      "timestamp": "2026-11-21T09:01:53.575Z",
+      "train": "12708 - NZM TPTY SF EXP",
+      "chartStatus": "Not Prepared",
+      "passengers": [
+        {
+          "number": 1,
+          "name": "Passenger 1",
+          "bookingStatus": "RAC  29",
+          "currentStatus": "CNF",
+          "coach": "B3",
+          "berth": 24,
+          "berthType": "Lower Berth"
+        },
+        {
+          "number": 2,
+          "name": "Passenger 2",
+          "bookingStatus": "RAC  30",
+          "currentStatus": "CNF",
+          "coach": "B3",
+          "berth": 25,
+          "berthType": "Lower Berth"
+        },
+        {
+          "number": 3,
+          "name": "Passenger 3",
+          "bookingStatus": "RAC  31",
+          "currentStatus": "CNF",
+          "coach": "B3",
+          "berth": 26,
+          "berthType": "Lower Berth"
+        }
+      ]
+    },
+    {
+      "id": "414b02a1-ab8a-4f18-b809-2f1f9029a4d6",
+      "pnr": "1003449638",
+      "type": "whatsapp",
+      "recipient": "9676802488",
+      "title": "WhatsApp Alert Preview",
+      "message": "🚆 *INDIAN RAILWAYS PNR ALERT*\n────────────────────\n*PNR Number:* `1003449638`\n*Train:* 12708 - NZM TPTY SF EXP\n*Route:* Delhi Hazrat Nizamuddin ➔ Tadipatri\n*Date:* 30-12-2026 | Class: 3A\n*Chart Status:* ⏳ Chart Not Prepared\n\n📢 *UPDATE:* Passenger 1 status changed from [CNF] to [RAC  24]; Passenger 2 status changed from [CNF] to [RAC  25]; Passenger 3 status changed from [CNF] to [RAC  26]\n\n👥 *Passenger Status:*\n• *Passenger 1*: RAC  24 \n• *Passenger 2*: RAC  25 \n• *Passenger 3*: RAC  26 \n────────────────────\n_100% Free Automated Alert by RailAlert_",
+      "status": "delivered (simulated free)",
+      "timestamp": "2026-11-21T09:01:48.984Z"
+    },
+    {
+      "id": "73f5bd61-acee-48f3-abe5-f1b1abc4643a",
+      "pnr": "1003449638",
+      "type": "mobile-push",
+      "recipient": "ntfy.sh/railalert-pnr-updates",
+      "title": "Free Mobile Push to Phone",
+      "message": "Train 12708 (Delhi Hazrat Nizamuddin ➔ Tadipatri)\nChange: Passenger 1 status changed from [CNF] to [RAC  24]; Passenger 2 status changed from [CNF] to [RAC  25]; Passenger 3 status changed from [CNF] to [RAC  26]\nStatus: P1: RAC  24, P2: RAC  25, P3: RAC  26",
+      "status": "delivered",
+      "error": null,
+      "timestamp": "2026-11-21T09:01:48.984Z"
+    },
+    {
+      "id": "93850791-eac0-4ba9-bc81-36483fcbd5dc",
+      "pnr": "1003449638",
+      "type": "in-app",
+      "recipient": "Browser Dashboard",
+      "title": "PNR 1003449638 Status Changed",
+      "message": "Passenger 1 status changed from [CNF] to [RAC  24]; Passenger 2 status changed from [CNF] to [RAC  25]; Passenger 3 status changed from [CNF] to [RAC  26]",
+      "status": "delivered",
+      "timestamp": "2026-11-21T09:01:48.984Z",
+      "train": "12708 - NZM TPTY SF EXP",
+      "chartStatus": "Not Prepared",
+      "passengers": [
+        {
+          "number": 1,
+          "name": "Passenger 1",
+          "bookingStatus": "RAC  29",
+          "currentStatus": "RAC  24",
+          "coach": null,
+          "berth": 24,
+          "berthType": null
+        },
+        {
+          "number": 2,
+          "name": "Passenger 2",
+          "bookingStatus": "RAC  30",
+          "currentStatus": "RAC  25",
+          "coach": null,
+          "berth": 25,
+          "berthType": null
+        },
+        {
+          "number": 3,
+          "name": "Passenger 3",
+          "bookingStatus": "RAC  31",
+          "currentStatus": "RAC  26",
+          "coach": null,
+          "berth": 26,
+          "berthType": null
+        }
+      ]
+    },
+    {
+      "id": "5941c3d1-d28e-4dd3-9b09-bc03e006d461",
+      "pnr": "1003449638",
+      "type": "whatsapp",
+      "recipient": "9676802488",
+      "title": "WhatsApp Alert Preview",
+      "message": "🚆 *INDIAN RAILWAYS PNR ALERT*\n────────────────────\n*PNR Number:* `1003449638`\n*Train:* 12708 - NZM TPTY SF EXP\n*Route:* Delhi Hazrat Nizamuddin ➔ Tadipatri\n*Date:* 30-12-2026 | Class: 3A\n*Chart Status:* ⏳ Chart Not Prepared\n\n📢 *UPDATE:* Passenger 1 status changed from [RAC  24] to [CNF] (Allocated Coach B3, Berth 24 - Lower Berth); Passenger 2 status changed from [RAC  25] to [CNF] (Allocated Coach B3, Berth 25 - Lower Berth); Passenger 3 status changed from [RAC  26] to [CNF] (Allocated Coach B3, Berth 26 - Lower Berth)\n\n👥 *Passenger Status:*\n• *Passenger 1*: CNF 📍 Coach *B3*, Seat *24* (Lower Berth)\n• *Passenger 2*: CNF 📍 Coach *B3*, Seat *25* (Lower Berth)\n• *Passenger 3*: CNF 📍 Coach *B3*, Seat *26* (Lower Berth)\n────────────────────\n_100% Free Automated Alert by RailAlert_",
+      "status": "delivered (simulated free)",
+      "timestamp": "2026-11-21T09:01:38.623Z"
+    },
+    {
+      "id": "4641641b-061b-4dd0-a479-a714bb79b29e",
+      "pnr": "1003449638",
+      "type": "mobile-push",
+      "recipient": "ntfy.sh/railalert-pnr-updates",
+      "title": "Free Mobile Push to Phone",
+      "message": "Train 12708 (Delhi Hazrat Nizamuddin ➔ Tadipatri)\nChange: Passenger 1 status changed from [RAC  24] to [CNF] (Allocated Coach B3, Berth 24 - Lower Berth); Passenger 2 status changed from [RAC  25] to [CNF] (Allocated Coach B3, Berth 25 - Lower Berth); Passenger 3 status changed from [RAC  26] to [CNF] (Allocated Coach B3, Berth 26 - Lower Berth)\nStatus: P1: CNF (B3-24), P2: CNF (B3-25), P3: CNF (B3-26)",
+      "status": "delivered",
+      "error": null,
+      "timestamp": "2026-11-21T09:01:38.623Z"
+    },
+    {
+      "id": "eb0404e4-53db-4470-8d38-e611f219703e",
+      "pnr": "1003449638",
+      "type": "in-app",
+      "recipient": "Browser Dashboard",
+      "title": "PNR 1003449638 Status Changed",
+      "message": "Passenger 1 status changed from [RAC  24] to [CNF] (Allocated Coach B3, Berth 24 - Lower Berth); Passenger 2 status changed from [RAC  25] to [CNF] (Allocated Coach B3, Berth 25 - Lower Berth); Passenger 3 status changed from [RAC  26] to [CNF] (Allocated Coach B3, Berth 26 - Lower Berth)",
+      "status": "delivered",
+      "timestamp": "2026-11-21T09:01:38.623Z",
+      "train": "12708 - NZM TPTY SF EXP",
+      "chartStatus": "Not Prepared",
+      "passengers": [
+        {
+          "number": 1,
+          "name": "Passenger 1",
+          "bookingStatus": "RAC  29",
+          "currentStatus": "CNF",
+          "coach": "B3",
+          "berth": 24,
+          "berthType": "Lower Berth"
+        },
+        {
+          "number": 2,
+          "name": "Passenger 2",
+          "bookingStatus": "RAC  30",
+          "currentStatus": "CNF",
+          "coach": "B3",
+          "berth": 25,
+          "berthType": "Lower Berth"
+        },
+        {
+          "number": 3,
+          "name": "Passenger 3",
+          "bookingStatus": "RAC  31",
+          "currentStatus": "CNF",
+          "coach": "B3",
+          "berth": 26,
+          "berthType": "Lower Berth"
+        }
+      ]
+    },
+    {
+      "id": "98a31c14-56e6-476f-818a-bea8312efc8c",
+      "pnr": "1003449638",
+      "type": "whatsapp",
+      "recipient": "9676802488",
+      "title": "Registration Confirmation to 9676802488",
+      "message": "🚆 *RailAlert Tracking Activated*\n────────────────────\nYour PNR `1003449638` is now actively monitored!\n\n• *Train:* 12708 - NZM TPTY SF EXP\n• *Route:* Delhi Hazrat Nizamuddin ➔ Tadipatri\n• *Date:* 30-12-2026 | Class: 3A\n• *Current Status:* P1: RAC  24, P2: RAC  25, P3: RAC  26\n• *Chart Status:* ⏳ Chart Not Prepared\n\n📲 *You will automatically receive an instant message the moment your waiting list drops, seat gets confirmed, or chart is prepared!*",
+      "status": "delivered (free simulation)",
+      "error": null,
+      "timestamp": "2026-11-21T09:01:17.075Z"
+    },
+    {
+      "id": "54a32e78-554d-4b5c-b40d-d3269b8238c8",
+      "pnr": "1003449638",
+      "type": "mobile-push",
+      "recipient": "ntfy.sh/railalert-pnr-updates",
+      "title": "Registration Push Alert",
+      "message": "PNR 1003449638 registered! Train: 12708. Status: P1: RAC  24, P2: RAC  25, P3: RAC  26. We will buzz your phone whenever status changes.",
+      "status": "delivered",
+      "timestamp": "2026-11-21T09:01:17.075Z"
+    },
+    {
+      "id": "2b2f132d-b630-4e18-a74b-d387c197bd64",
+      "pnr": "1003449638",
+      "type": "in-app",
+      "recipient": "Browser Dashboard",
+      "title": "PNR 1003449638 Registration Confirmed",
+      "message": "Tracking started. Current Status: P1: RAC  24, P2: RAC  25, P3: RAC  26. Instant alerts enabled for 9676802488.",
+      "status": "delivered",
+      "timestamp": "2026-11-21T09:01:17.075Z",
+      "train": "12708 - NZM TPTY SF EXP"
+    },
+    {
+      "id": "2ae47b69-c93b-49a2-9e4e-7379aa0968fd",
+      "pnr": "1003449638",
+      "type": "whatsapp",
+      "recipient": "9676802488",
+      "title": "Registration Confirmation to 9676802488",
+      "message": "🚆 *RailAlert Tracking Activated*\n────────────────────\nYour PNR `1003449638` is now actively monitored!\n\n• *Train:* 12708 - NZM TPTY SF EXP\n• *Route:* Delhi Hazrat Nizamuddin ➔ Tadipatri\n• *Date:* 30-12-2026 | Class: 3A\n• *Current Status:* P1: RAC  24, P2: RAC  25, P3: RAC  26\n• *Chart Status:* ⏳ Chart Not Prepared\n\n📲 *You will automatically receive an instant message the moment your waiting list drops, seat gets confirmed, or chart is prepared!*",
+      "status": "delivered (free simulation)",
+      "error": null,
+      "timestamp": "2026-11-21T09:00:41.536Z"
+    },
+    {
+      "id": "5b54415d-b5fb-43be-9273-fc998257f507",
+      "pnr": "1003449638",
+      "type": "mobile-push",
+      "recipient": "ntfy.sh/railalert-pnr-updates",
+      "title": "Registration Push Alert",
+      "message": "PNR 1003449638 registered! Train: 12708. Status: P1: RAC  24, P2: RAC  25, P3: RAC  26. We will buzz your phone whenever status changes.",
+      "status": "delivered",
+      "timestamp": "2026-11-21T09:00:41.536Z"
+    },
+    {
+      "id": "ca72928f-bab8-4512-8252-77864ed8e8c8",
+      "pnr": "1003449638",
+      "type": "in-app",
+      "recipient": "Browser Dashboard",
+      "title": "PNR 1003449638 Registration Confirmed",
+      "message": "Tracking started. Current Status: P1: RAC  24, P2: RAC  25, P3: RAC  26. Instant alerts enabled for 9676802488.",
+      "status": "delivered",
+      "timestamp": "2026-11-21T09:00:41.536Z",
+      "train": "12708 - NZM TPTY SF EXP"
+    }
+  ]
+}

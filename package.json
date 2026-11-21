@@ -1,0 +1,32 @@
+{
+  "name": "railalert-pnr-auto-updater",
+  "version": "1.0.0",
+  "description": "Automated Indian Railways IRCTC PNR Tracker & Multi-Channel Notification Engine (Email, SMS, WhatsApp)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node test/integration.test.js"
+  },
+  "keywords": [
+    "pnr",
+    "irctc",
+    "railways",
+    "notifications",
+    "sms",
+    "email",
+    "whatsapp",
+    "automation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.10",
+    "express": "^5.3.0",
+    "node-cron": "^4.6.0",
+    "nodemailer": "^10.6.1",
+    "uuid": "^14.0.3"
+  }
+}
