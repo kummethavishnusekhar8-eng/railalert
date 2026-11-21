@@ -55,13 +55,6 @@ router.post('/', async (req, res) => {
       });
     }
 
-    if (!phoneNumber && !email) {
-      return res.status(400).json({
-        success: false,
-        error: 'Please provide at least a phone number or email address for updates.'
-      });
-    }
-
     if (!deviceId) {
       return res.status(400).json({
         success: false,
