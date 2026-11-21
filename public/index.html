@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
-  <title>RailAlert — Live IRCTC PNR Status</title>
+  <title>LivePNRAlert — Live IRCTC PNR Status</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
@@ -37,7 +37,7 @@
           <i data-lucide="train" class="w-5 h-5"></i>
         </div>
         <div class="min-w-0">
-          <h1 class="font-bold text-base text-slate-900 tracking-tight leading-none">RailAlert</h1>
+          <h1 class="font-bold text-base text-slate-900 tracking-tight leading-none">LivePNRAlert</h1>
           <p class="text-[11px] text-slate-500 mt-1 truncate">Live IRCTC PNR Status &amp; Real-Time Alerts</p>
         </div>
       </div>
@@ -214,7 +214,7 @@
           checkPermissionState();
           if (permission === 'granted') {
             showToast('Alerts Enabled', 'You will receive notifications and sound when PNR updates.', true);
-            triggerSystemNotification('🚆 RailAlert Active', 'Real-time notifications are active on your device.');
+            triggerSystemNotification('🚆 LivePNRAlert Active', 'Real-time notifications are active on your device.');
           }
         });
       } else {
