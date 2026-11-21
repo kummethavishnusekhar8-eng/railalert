@@ -5,7 +5,7 @@
     "simulationMode": false,
     "pnrProvider": "free-auto",
     "email": {
-      "enabled": true,
+      "enabled": false,
       "service": "gmail",
       "host": "smtp.gmail.com",
       "port": 587,
@@ -45,27 +45,5 @@
     }
   },
   "pnrs": [],
-  "notifications": [
-    {
-      "id": "e433f19b-a2da-4cc6-bd1f-f31faa3e6a8b",
-      "pnr": "2451234567",
-      "type": "mobile-push",
-      "recipient": "ntfy.sh/railalert-pnr-updates",
-      "title": "Registration Push Alert",
-      "message": "PNR 2451234567 registered! Train: 12952 (Tejas Rajdhani Express)\nRoute: NDLS (New Delhi) ➔ MMCT (Mumbai Central)\nStatus: P1: WL 12\nChart: NOT PREPARED",
-      "status": "delivered",
-      "timestamp": "2026-11-21T09:51:47.225Z"
-    },
-    {
-      "id": "b3ab685e-ad61-49c2-9e06-86674de09314",
-      "pnr": "2451234567",
-      "type": "in-app",
-      "recipient": "Browser Dashboard",
-      "title": "PNR 2451234567 Registration Confirmed",
-      "message": "Tracking started. Current Status: P1: WL 12. Instant alerts enabled for .",
-      "status": "delivered",
-      "timestamp": "2026-11-21T09:51:47.225Z",
-      "train": "12952 - Tejas Rajdhani Express"
-    }
-  ]
+  "notifications": []
 }
