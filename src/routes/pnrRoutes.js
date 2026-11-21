@@ -42,6 +42,27 @@ router.get('/:pnr', (req, res) => {
   res.json({ success: true, pnr });
 });
 
+// GET train route for this PNR
+router.get('/:pnr/route', async (req, res) => {
+  const deviceId = getDeviceId(req);
+  const pnr = db.getPnr(req.params.pnr);
+  if (!pnr || !belongsToDevice(pnr, deviceId)) {
+    return res.status(404).json({ success: false, error: 'PNR not found on your device' });
+  }
+
+  // If route is already populated with timings (arr/dep), return it directly
+  if (pnr.route && pnr.route.length > 0 && typeof pnr.route[0] === 'object' && pnr.route[0].dep) {
+    return res.json({ success: true, route: pnr.route });
+  }
+
+  const route = await pnrService.fetchTrainRoute(pnr.trainNumber);
+  if (route && route.length > 0) {
+    pnr.route = route;
+    db.savePnr(pnr);
+  }
+  res.json({ success: true, route: route || [] });
+});
+
 // POST register new PNR (associated with device)
 router.post('/', async (req, res) => {
   try {

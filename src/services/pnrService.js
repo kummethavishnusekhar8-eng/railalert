@@ -3,6 +3,109 @@ const db = require('../db');
 const notificationService = require('./notificationService');
 
 /**
+ * Fetch full train route stations and timetable/schedule from public Indian Railways feed
+ */
+function fetchTrainRoute(trainNo) {
+  return new Promise((resolve) => {
+    if (!trainNo) return resolve([]);
+    const cleanNo = String(trainNo).trim().replace(/\D/g, '');
+    const scheduleUrl = `https://www.confirmtkt.com/train-schedule/${cleanNo}`;
+
+    // 1. Try fetching detailed timetable with arrival & departure times
+    https.get(scheduleUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } }, res => {
+      let d = '';
+      res.on('data', c => d += c);
+      res.on('end', () => {
+        try {
+          const tableMatch = d.match(/<table[\s\S]*?<\/table>/i);
+          if (tableMatch) {
+            const rows = tableMatch[0].match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
+            const stationRows = rows.filter(r => r.includes('/railway-stations/'));
+            if (stationRows.length > 0) {
+              const stations = stationRows.map((r, idx) => {
+                let name = '';
+                let code = '';
+                let dist = '';
+
+                const m1 = r.match(/<div>\s*([^<]+?)\s*<\/div>\s*<div>\s*([A-Z0-9]+)\s*-\s*([0-9.]+km)\s*<\/div>/);
+                if (m1) {
+                  name = m1[1].trim();
+                  code = m1[2].trim();
+                  dist = m1[3].trim();
+                } else {
+                  const m2 = r.match(/href="\/railway-stations\/[^"]+"[^>]*>\s*([^<]+?)\s*<\/a>/);
+                  if (m2) {
+                    const raw = m2[1].trim();
+                    const parts = raw.split('-');
+                    code = (parts[parts.length - 1] || '').trim();
+                    name = parts.slice(0, parts.length - 1).join('-').trim() || raw;
+                  }
+                }
+
+                const timeMatches = r.match(/\b\d{2}:\d{2}\b/g) || [];
+                let arr = '';
+                let dep = '';
+
+                if (idx === 0) {
+                  dep = timeMatches[0] || '';
+                  arr = 'Source';
+                } else if (idx === stationRows.length - 1) {
+                  arr = timeMatches[0] || '';
+                  dep = 'Destination';
+                } else {
+                  arr = timeMatches[0] || '';
+                  dep = timeMatches[1] || timeMatches[0] || '';
+                }
+
+                const haltM = r.match(/<td[^>]*>(\d+m|\d+\s*Min)<\/td>/i);
+                const halt = haltM ? haltM[1].trim() : '';
+
+                return { name, code, dist, arr, dep, halt };
+              });
+
+              if (stations.length > 0) {
+                return resolve(stations);
+              }
+            }
+          }
+        } catch {
+          // fall through
+        }
+
+        // 2. Fallback: train-running-status select options
+        fetchRunningStatusFallback(cleanNo).then(resolve);
+      });
+    }).on('error', () => {
+      fetchRunningStatusFallback(cleanNo).then(resolve);
+    });
+  });
+}
+
+function fetchRunningStatusFallback(cleanNo) {
+  return new Promise((resolve) => {
+    const url = `https://www.confirmtkt.com/train-running-status/${cleanNo}`;
+    https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } }, res => {
+      let d = '';
+      res.on('data', c => d += c);
+      res.on('end', () => {
+        try {
+          const start = d.indexOf('StationName');
+          if (start === -1) return resolve([]);
+          const sel = d.substring(start, d.indexOf('</select>', start));
+          const stations = sel.split('</option>').map(s => {
+            const m = s.match(/>([^<]+)$/);
+            return m ? { name: m[1].trim(), code: '', dist: '', arr: '', dep: '', halt: '' } : null;
+          }).filter(Boolean);
+          resolve(stations);
+        } catch {
+          resolve([]);
+        }
+      });
+    }).on('error', () => resolve([]));
+  });
+}
+
+/**
  * Fetch 100% REAL LIVE IRCTC PNR Status from Railway Backend (Zero Cost, No API key needed)
  */
 function fetchRealIrctcPnr(pnrNumber) {
@@ -17,10 +120,10 @@ function fetchRealIrctcPnr(pnrNumber) {
         'Content-Type': 'application/json',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
-    }, res => {
+    }, async (res) => {
       let d = '';
       res.on('data', c => d += c);
-      res.on('end', () => {
+      res.on('end', async () => {
         try {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             const json = JSON.parse(d);
@@ -36,14 +139,25 @@ function fetchRealIrctcPnr(pnrNumber) {
                 berthType: pass.currentBerthCode || pass.bookingBerthCode || null
               }));
 
+              const route = await fetchTrainRoute(p.trainNo);
+
               return resolve({
                 trainNumber: p.trainNo,
                 trainName: p.trainName || 'Express',
                 fromStation: p.boardingStationName || p.from || p.boardingPoint || 'Origin',
                 toStation: p.reservationUptoName || p.to || p.reservationUpto || 'Destination',
+                fromCode: p.from || '',
+                toCode: p.to || '',
+                departureTime: p.departureTime || '',
+                arrivalTime: p.arrivalTime || '',
+                duration: p.duration || '',
+                expectedPlatformNo: p.expectedPlatformNo || '',
+                quota: p.quota || 'GN',
+                bookingDate: p.bookingDate || '',
                 dateOfJourney: p.doj,
                 class: p.class || '3A',
                 chartPrepared: Boolean(p.chartPrepared),
+                route: route || [],
                 passengers: passengers.length > 0 ? passengers : [
                   { number: 1, name: 'Passenger 1', bookingStatus: 'CNF', currentStatus: 'CNF', coach: null, berth: null, berthType: null }
                 ]
@@ -82,11 +196,20 @@ function createFallbackPnr(pnrNumber) {
   return {
     trainNumber: '12952',
     trainName: 'Tejas Rajdhani Express',
-    fromStation: 'NDLS (New Delhi)',
-    toStation: 'MMCT (Mumbai Central)',
+    fromStation: 'New Delhi',
+    toStation: 'Mumbai Central',
+    fromCode: 'NDLS',
+    toCode: 'MMCT',
+    departureTime: '16:55',
+    arrivalTime: '08:35',
+    duration: '15h 40m',
+    expectedPlatformNo: '1',
+    quota: 'GN',
+    bookingDate: 'Recent',
     dateOfJourney: dateStr,
     class: '3A',
     chartPrepared: false,
+    route: ['New Delhi', 'Mathura', 'Kota', 'Ratlam', 'Vadodara', 'Surat', 'Borivali', 'Mumbai Central'],
     passengers: [
       {
         number: 1,
@@ -118,9 +241,18 @@ async function registerPnr(pnrNumber, contactDetails) {
     trainName: base.trainName,
     fromStation: base.fromStation,
     toStation: base.toStation,
+    fromCode: base.fromCode || '',
+    toCode: base.toCode || '',
+    departureTime: base.departureTime || '',
+    arrivalTime: base.arrivalTime || '',
+    duration: base.duration || '',
+    expectedPlatformNo: base.expectedPlatformNo || '',
+    quota: base.quota || 'GN',
+    bookingDate: base.bookingDate || '',
     dateOfJourney: base.dateOfJourney,
     class: base.class,
     chartPrepared: base.chartPrepared,
+    route: base.route || [],
     passengers: base.passengers,
     lastChecked: new Date().toISOString(),
     lastStatusChange: new Date().toISOString(),
@@ -191,10 +323,28 @@ async function checkPnr(pnrNumber) {
     updatedSnapshot.trainName = liveData.trainName;
     updatedSnapshot.fromStation = liveData.fromStation;
     updatedSnapshot.toStation = liveData.toStation;
+    if (liveData.fromCode) updatedSnapshot.fromCode = liveData.fromCode;
+    if (liveData.toCode) updatedSnapshot.toCode = liveData.toCode;
+    if (liveData.departureTime) updatedSnapshot.departureTime = liveData.departureTime;
+    if (liveData.arrivalTime) updatedSnapshot.arrivalTime = liveData.arrivalTime;
+    if (liveData.duration) updatedSnapshot.duration = liveData.duration;
+    if (liveData.expectedPlatformNo) updatedSnapshot.expectedPlatformNo = liveData.expectedPlatformNo;
+    if (liveData.quota) updatedSnapshot.quota = liveData.quota;
+    if (liveData.bookingDate) updatedSnapshot.bookingDate = liveData.bookingDate;
     updatedSnapshot.dateOfJourney = liveData.dateOfJourney;
     updatedSnapshot.chartPrepared = liveData.chartPrepared;
     updatedSnapshot.passengers = liveData.passengers;
+    if (liveData.route && liveData.route.length > 0) {
+      updatedSnapshot.route = liveData.route;
+    }
     updatedSnapshot.isRealData = true;
+  }
+
+  if (!updatedSnapshot.route || updatedSnapshot.route.length === 0) {
+    const route = await fetchTrainRoute(updatedSnapshot.trainNumber);
+    if (route && route.length > 0) {
+      updatedSnapshot.route = route;
+    }
   }
 
   updatedSnapshot.lastChecked = new Date().toISOString();
@@ -299,6 +449,7 @@ async function simulateWaitlistDrop(pnrNumber) {
 
 module.exports = {
   fetchRealIrctcPnr,
+  fetchTrainRoute,
   registerPnr,
   checkPnr,
   diffPnrStatus,

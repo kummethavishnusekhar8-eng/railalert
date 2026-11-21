@@ -32,9 +32,9 @@
   <!-- Header -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
     <div class="max-w-3xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
-      <div class="flex items-center space-x-2.5 min-w-0">
-        <div class="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-sm shrink-0">
-          <i data-lucide="train" class="w-5 h-5"></i>
+      <div class="flex items-center space-x-2.5 min-w-0 cursor-pointer" onclick="showDashboardView()">
+        <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-sm shrink-0">
+          <i data-lucide="train" class="w-4 h-4 sm:w-5 sm:h-5"></i>
         </div>
         <div class="min-w-0">
           <h1 class="font-bold text-base text-slate-900 tracking-tight leading-none">LivePNRAlert</h1>
@@ -58,8 +58,8 @@
     </div>
   </header>
 
-  <!-- Main Content -->
-  <main class="max-w-3xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full space-y-6">
+  <!-- View 1: Main Dashboard View -->
+  <main id="dashboard-view" class="max-w-3xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full space-y-6">
 
     <!-- Registration Form -->
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
@@ -126,12 +126,34 @@
 
   </main>
 
+  <!-- View 2: Full-Page Train & PNR Details View -->
+  <main id="details-view" class="max-w-3xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full space-y-5 hidden">
+    <!-- Top Back Bar -->
+    <div class="flex items-center justify-between gap-2">
+      <button onclick="showDashboardView()" class="inline-flex items-center space-x-2 text-xs sm:text-sm font-bold text-slate-700 bg-white border border-slate-200 px-3.5 py-2 rounded-xl shadow-sm hover:bg-slate-50 transition min-h-[40px]">
+        <i data-lucide="arrow-left" class="w-4 h-4 text-emerald-600"></i>
+        <span>&larr; Back to Tickets</span>
+      </button>
+
+      <button id="btn-details-refresh" onclick="refreshCurrentDetails()" class="inline-flex items-center space-x-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3.5 py-2 rounded-xl hover:bg-emerald-100 transition shadow-sm min-h-[40px]">
+        <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-emerald-600" id="details-refresh-icon"></i>
+        <span>Check Status Now</span>
+      </button>
+    </div>
+
+    <!-- Container for dynamic full-page ticket content -->
+    <div id="full-details-container" class="space-y-5">
+      <!-- Full Page Details Rendered Here -->
+    </div>
+  </main>
+
   <!-- Toast Container -->
   <div id="toast-box" class="fixed bottom-4 right-4 z-50 space-y-2 pointer-events-none max-w-sm w-full px-4 sm:px-0"></div>
 
   <!-- Client Script -->
   <script>
     let pnrsList = [];
+    let currentDetailPnr = null;
 
     // Device Identification (Privacy Shield)
     let deviceId = localStorage.getItem('railalert_device_id');
@@ -229,6 +251,14 @@
       connectSse();
     });
 
+    window.addEventListener('popstate', (e) => {
+      if (e.state && e.state.view === 'details' && e.state.pnr) {
+        showPnrDetails(e.state.pnr, false);
+      } else {
+        showDashboardView(false);
+      }
+    });
+
     function showToast(title, msg, isSuccess = true) {
       const box = document.getElementById('toast-box');
       box.innerHTML = ''; // Keep only ONE message on screen
@@ -256,7 +286,6 @@
     function connectSse() {
       const eventSource = new EventSource('/api/events?deviceId=' + encodeURIComponent(deviceId));
       
-      // Refresh list silently without sending duplicate toast
       eventSource.addEventListener('pnr_added', () => {
         fetchAllPnrs();
       });
@@ -266,6 +295,9 @@
         showToast(`PNR ${d.pnr.pnr} Updated`, d.changeSummary, true);
         triggerSystemNotification(`🚨 PNR ${d.pnr.pnr}`, d.changeSummary);
         fetchAllPnrs();
+        if (currentDetailPnr && currentDetailPnr === d.pnr.pnr) {
+          renderFullDetails(d.pnr);
+        }
       });
 
       eventSource.addEventListener('pnr_updated', () => fetchAllPnrs());
@@ -281,6 +313,10 @@
         if (data.success) {
           pnrsList = data.pnrs || [];
           renderTickets();
+          if (currentDetailPnr) {
+            const updatedDetail = pnrsList.find(p => p.pnr === currentDetailPnr);
+            if (updatedDetail) renderFullDetails(updatedDetail);
+          }
         }
       } catch (err) {
         console.error(err);
@@ -317,10 +353,12 @@
         if (data.success) {
           playAlertChime();
           const p = data.pnr;
-          const statusSummary = (p.passengers || []).map(pass => `P${pass.number}: ${pass.currentStatus}`).join(', ') || 'Confirmed';
+          const statusSummary = (p.passengers || []).map(pass => `P${pass.number}: ${pass.currentStatus}`).join(', ') || 'Active';
           showToast(`Train ${p.trainNumber} - ${p.trainName}`, statusSummary, true);
           document.getElementById('track-form').reset();
-          fetchAllPnrs();
+          await fetchAllPnrs();
+          // Automatically navigate to full train details!
+          showPnrDetails(p.pnr);
         } else {
           showToast('Notice', data.error || 'Failed to fetch PNR', false);
         }
@@ -329,11 +367,18 @@
       } finally {
         btn.disabled = false;
         btn.innerHTML = `<i data-lucide="search" class="w-4 h-4"></i><span>Check &amp; Track Status</span>`;
-        lucide.createIcons();
+        if (!p.route || p.route.length === 0) {
+        loadRouteForPnr(p.pnr);
+      }
+
+      lucide.createIcons();
       }
     }
 
-    async function checkPnrNow(pnr) {
+    async function checkPnrNow(pnr, isFromDetails = false) {
+      const refreshIcon = document.getElementById('details-refresh-icon');
+      if (refreshIcon) refreshIcon.classList.add('animate-spin');
+
       try {
         const res = await fetch(`/api/pnr/${pnr}/check`, { 
           method: 'POST',
@@ -345,14 +390,25 @@
             showToast('Update Found!', data.diff.changeSummary, true);
             triggerSystemNotification(`🚨 PNR ${pnr} Updated!`, data.diff.changeSummary);
           } else {
-            showToast(`PNR ${pnr}`, 'Status is up to date.', true);
+            showToast(`PNR ${pnr}`, 'Live PRS Checked: Status is up to date.', true);
           }
-          fetchAllPnrs();
+          await fetchAllPnrs();
+          if (isFromDetails && data.pnr) {
+            renderFullDetails(data.pnr);
+          }
         } else {
           showToast('Notice', data.error || 'Check failed', false);
         }
       } catch (err) {
         showToast('Error', err.message, false);
+      } finally {
+        if (refreshIcon) refreshIcon.classList.remove('animate-spin');
+      }
+    }
+
+    function refreshCurrentDetails() {
+      if (currentDetailPnr) {
+        checkPnrNow(currentDetailPnr, true);
       }
     }
 
@@ -366,6 +422,9 @@
         const data = await res.json();
         if (data.success) {
           showToast('Removed', `PNR ${pnr} removed.`, true);
+          if (currentDetailPnr === pnr) {
+            showDashboardView();
+          }
           fetchAllPnrs();
         }
       } catch (err) {
@@ -373,6 +432,386 @@
       }
     }
 
+    // View Navigation: Switch between Dashboard & Full-Page Details
+    function showDashboardView(updateHistory = true) {
+      currentDetailPnr = null;
+      document.getElementById('details-view').classList.add('hidden');
+      document.getElementById('dashboard-view').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (updateHistory) {
+        history.pushState({ view: 'dashboard' }, '');
+      }
+    }
+
+    function showPnrDetails(pnr, updateHistory = true) {
+      const ticket = pnrsList.find(p => p.pnr === pnr);
+      if (!ticket) return;
+
+      currentDetailPnr = pnr;
+      renderFullDetails(ticket);
+      document.getElementById('dashboard-view').classList.add('hidden');
+      document.getElementById('details-view').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (updateHistory) {
+        history.pushState({ view: 'details', pnr: pnr }, '');
+      }
+    }
+
+    // Route Helper Functions
+    function isStationMatch(st, targetStation, targetCode) {
+      const stationName = typeof st === 'object' ? (st.name || '') : String(st || '');
+      const stationCode = typeof st === 'object' ? (st.code || '') : '';
+      if (!stationName && !stationCode) return false;
+      
+      const s = stationName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const sc = stationCode.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const t = (targetStation || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const c = (targetCode || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      if (sc && c && sc === c) return true;
+      if (c && (s.includes(c) || sc.includes(c))) return true;
+      if (t && (s.includes(t) || t.includes(s))) return true;
+      
+      const tWords = (targetStation || '').toLowerCase().split(/[\s,/-]+/).filter(w => w.length > 3);
+      for (const w of tWords) {
+        if (s.includes(w)) return true;
+      }
+      return false;
+    }
+
+    function generateRouteTimelineHtml(route, fromStation, toStation, fromCode, toCode) {
+      if (!route || route.length === 0) {
+        return '<p class="text-xs text-slate-400 italic">Route information not available.</p>';
+      }
+
+      let fromIdx = -1;
+      let toIdx = -1;
+
+      route.forEach((st, idx) => {
+        if (fromIdx === -1 && isStationMatch(st, fromStation, fromCode)) {
+          fromIdx = idx;
+        }
+        if (isStationMatch(st, toStation, toCode)) {
+          toIdx = idx;
+        }
+      });
+
+      return `
+        <div class="relative border-l-2 border-slate-200 ml-3 pl-5 my-2 max-h-96 overflow-y-auto pr-2 space-y-4">
+          ${route.map((st, idx) => {
+            const isBoarding = idx === fromIdx;
+            const isDestination = idx === toIdx;
+            const isSegment = (fromIdx !== -1 && toIdx !== -1 && idx >= fromIdx && idx <= toIdx);
+
+            const stName = typeof st === 'object' ? st.name : st;
+            const stCode = (typeof st === 'object' && st.code) ? st.code : '';
+            const stDist = (typeof st === 'object' && st.dist) ? st.dist : '';
+            const stArr = (typeof st === 'object' && st.arr) ? st.arr : '';
+            const stDep = (typeof st === 'object' && st.dep) ? st.dep : '';
+            const stHalt = (typeof st === 'object' && st.halt) ? st.halt : '';
+
+            let dotClass = 'bg-slate-300 border-white';
+            let badgeHtml = '';
+            let textClass = 'text-slate-700 font-medium text-xs';
+
+            if (isBoarding) {
+              dotClass = 'bg-emerald-600 ring-4 ring-emerald-100 border-white';
+              textClass = 'text-emerald-950 font-bold text-xs sm:text-sm';
+              badgeHtml = '<span class="ml-2 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 uppercase tracking-wide">Boarding</span>';
+            } else if (isDestination) {
+              dotClass = 'bg-rose-600 ring-4 ring-rose-100 border-white';
+              textClass = 'text-rose-950 font-bold text-xs sm:text-sm';
+              badgeHtml = '<span class="ml-2 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 uppercase tracking-wide">Destination</span>';
+            } else if (isSegment) {
+              dotClass = 'bg-emerald-500 border-white';
+              textClass = 'text-slate-900 font-semibold text-xs';
+            }
+
+            // Build time badge
+            let timeHtml = '';
+            if (stArr || stDep) {
+              if (stArr === 'Source' || idx === 0) {
+                timeHtml = `
+                  <div class="flex items-center space-x-1.5 text-[11px] font-mono text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100 shrink-0">
+                    <span class="font-bold">Starts: ${stDep || '05:20'}</span>
+                  </div>
+                `;
+              } else if (stDep === 'Destination' || idx === route.length - 1) {
+                timeHtml = `
+                  <div class="flex items-center space-x-1.5 text-[11px] font-mono text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-100 shrink-0">
+                    <span class="font-bold">Ends: ${stArr || '21:00'}</span>
+                  </div>
+                `;
+              } else {
+                timeHtml = `
+                  <div class="flex items-center space-x-2 text-[11px] font-mono text-slate-600 bg-white px-2.5 py-1 rounded-lg border border-slate-200/80 shadow-2xs shrink-0">
+                    <span class="text-slate-500">Arr: <strong class="text-slate-800">${stArr}</strong></span>
+                    <span class="text-slate-300">|</span>
+                    <span class="text-slate-500">Dep: <strong class="text-slate-800">${stDep}</strong></span>
+                    ${stHalt ? `<span class="px-1.5 py-0.2 rounded bg-slate-100 text-[10px] text-slate-500 font-medium">(${stHalt})</span>` : ''}
+                  </div>
+                `;
+              }
+            }
+
+            return `
+              <div class="relative group">
+                <span class="absolute -left-[27px] top-1.5 w-3.5 h-3.5 rounded-full border-2 ${dotClass} shadow-sm transition-transform group-hover:scale-125"></span>
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <div class="flex items-center flex-wrap">
+                    <span class="text-[11px] font-mono text-slate-400 w-5">${idx + 1}.</span>
+                    <span class="${textClass}">${stName}</span>
+                    ${stCode ? `<span class="ml-1.5 text-[10px] font-mono font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">${stCode}</span>` : ''}
+                    ${stDist ? `<span class="ml-1 text-[10px] text-slate-400">(${stDist})</span>` : ''}
+                    ${badgeHtml}
+                  </div>
+                  ${timeHtml}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    async function loadRouteForPnr(pnr) {
+      try {
+        const res = await fetch('/api/pnr/' + encodeURIComponent(pnr) + '/route?deviceId=' + encodeURIComponent(deviceId));
+        const data = await res.json();
+        if (data.success && data.route && data.route.length > 0) {
+          const ticket = pnrsList.find(p => p.pnr === pnr);
+          if (ticket) {
+            ticket.route = data.route;
+          }
+          if (currentDetailPnr === pnr) {
+            const container = document.getElementById('route-timeline-container');
+            const countBadge = document.getElementById('route-count-badge');
+            if (countBadge) countBadge.innerText = data.route.length + ' Stations';
+            if (container && ticket) {
+              container.innerHTML = generateRouteTimelineHtml(data.route, ticket.fromStation, ticket.toStation, ticket.fromCode, ticket.toCode);
+              lucide.createIcons();
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load route:', e);
+      }
+    }
+
+    // Render Full Page Details
+    function renderFullDetails(p) {
+      const container = document.getElementById('full-details-container');
+      
+      const passengersHtml = (p.passengers || []).map(pass => `
+        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="space-y-1">
+            <div class="flex items-center space-x-2">
+              <span class="font-bold text-sm text-slate-900">Passenger ${pass.number}</span>
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-md ${
+                pass.currentStatus.includes('CNF') ? 'bg-emerald-100 text-emerald-800' :
+                pass.currentStatus.includes('RAC') ? 'bg-amber-100 text-amber-800' :
+                'bg-rose-100 text-rose-800'
+              }">
+                ${pass.currentStatus}
+              </span>
+            </div>
+            <p class="text-xs text-slate-500">Booking Status: <span class="font-semibold text-slate-700">${pass.bookingStatus}</span></p>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            ${pass.coach ? `
+              <div class="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center space-x-1.5">
+                <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-600"></i>
+                <span>Coach ${pass.coach}, Seat ${pass.berth} (${pass.berthType || 'Berth'})</span>
+              </div>
+            ` : `
+              <div class="px-3 py-1.5 rounded-xl bg-slate-200/70 text-slate-600 text-xs font-medium flex items-center space-x-1">
+                <i data-lucide="clock" class="w-3.5 h-3.5 text-slate-400"></i>
+                <span>Seat allocated upon chart preparation</span>
+              </div>
+            `}
+          </div>
+        </div>
+      `).join('');
+
+      const historyHtml = (p.history && p.history.length > 0) ? p.history.map(h => `
+        <div class="flex items-start space-x-3 text-xs">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 shrink-0"></span>
+          <div>
+            <p class="font-semibold text-slate-800">${h.summary}</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">${new Date(h.timestamp).toLocaleString('en-IN')}</p>
+          </div>
+        </div>
+      `).join('') : '<p class="text-xs text-slate-400 italic">No status changes recorded yet. We check every 5 minutes.</p>';
+
+      container.innerHTML = `
+        <!-- Hero Card -->
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="p-6 bg-gradient-to-br from-emerald-900 via-emerald-800 to-slate-900 text-white space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="flex items-center space-x-2">
+                <span class="px-3 py-1 rounded-full text-xs font-extrabold bg-white/20 backdrop-blur-sm tracking-wider">
+                  CLASS ${p.class || '3A'}
+                </span>
+                <span class="px-3 py-1 rounded-full text-xs font-extrabold ${
+                  p.chartPrepared ? 'bg-emerald-400 text-emerald-950' : 'bg-amber-400 text-amber-950'
+                }">
+                  ${p.chartPrepared ? '✓ CHART PREPARED' : '⏳ CHART NOT PREPARED'}
+                </span>
+              </div>
+              <div class="text-right">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-emerald-200/80">10-Digit PNR</p>
+                <p class="text-xl sm:text-2xl font-mono font-black tracking-widest text-white">${p.pnr}</p>
+              </div>
+            </div>
+
+            <div>
+              <p class="text-xs uppercase tracking-widest text-emerald-200 font-bold">Indian Railways Express</p>
+              <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight mt-0.5">${p.trainNumber} &bull; ${p.trainName}</h2>
+            </div>
+          </div>
+
+          <!-- Schedule & Route Visual Timeline -->
+          <div class="p-6 bg-slate-50/60 border-b border-slate-100">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+              <!-- Origin -->
+              <div class="space-y-1">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Boarding Station</p>
+                <h4 class="font-bold text-base text-slate-900">${p.fromStation}</h4>
+                <div class="flex items-center space-x-2 text-xs text-slate-600">
+                  ${p.departureTime ? `<span class="font-mono font-bold text-slate-800 text-sm">${p.departureTime}</span>` : ''}
+                  ${p.expectedPlatformNo ? `<span class="px-2 py-0.5 rounded-md bg-white border border-slate-200 font-semibold text-[11px]">Platform ${p.expectedPlatformNo}</span>` : ''}
+                </div>
+              </div>
+
+              <!-- Journey Center Track -->
+              <div class="text-center py-2 sm:py-0">
+                <p class="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-0.5 inline-block mb-1">
+                  ${p.duration ? p.duration : 'Direct Route'}
+                </p>
+                <div class="relative flex items-center justify-center my-1">
+                  <div class="h-0.5 w-full bg-slate-200"></div>
+                  <div class="absolute w-7 h-7 rounded-full bg-white border-2 border-emerald-600 flex items-center justify-center text-emerald-600 shadow-sm">
+                    <i data-lucide="train" class="w-3.5 h-3.5"></i>
+                  </div>
+                </div>
+                <p class="text-[11px] text-slate-500 font-medium">Journey Date: ${p.dateOfJourney}</p>
+              </div>
+
+              <!-- Destination -->
+              <div class="space-y-1 sm:text-right">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Destination Station</p>
+                <h4 class="font-bold text-base text-slate-900">${p.toStation}</h4>
+                <div class="flex items-center sm:justify-end space-x-2 text-xs text-slate-600">
+                  ${p.arrivalTime ? `<span class="font-mono font-bold text-slate-800 text-sm">${p.arrivalTime}</span>` : ''}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Passenger Details Section -->
+          <div class="p-6 space-y-4">
+            <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-2">
+              <i data-lucide="users" class="w-4 h-4 text-emerald-600"></i>
+              <span>Passenger Status &amp; Seat Allocation</span>
+            </h3>
+
+            <div class="space-y-3">
+              ${passengersHtml}
+            </div>
+          </div>
+
+          <!-- Journey Information Grid -->
+          <div class="p-6 bg-slate-50 border-t border-slate-100">
+            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Booking &amp; Train Details</h3>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+              <div class="p-3 bg-white rounded-xl border border-slate-200/80">
+                <p class="text-slate-400 font-medium">Quota</p>
+                <p class="font-bold text-slate-800 mt-1">${p.quota || 'General (GN)'}</p>
+              </div>
+              <div class="p-3 bg-white rounded-xl border border-slate-200/80">
+                <p class="text-slate-400 font-medium">Class</p>
+                <p class="font-bold text-slate-800 mt-1">${p.class || '3A'}</p>
+              </div>
+              <div class="p-3 bg-white rounded-xl border border-slate-200/80">
+                <p class="text-slate-400 font-medium">Booking Date</p>
+                <p class="font-bold text-slate-800 mt-1">${p.bookingDate || 'Confirmed'}</p>
+              </div>
+              <div class="p-3 bg-white rounded-xl border border-slate-200/80">
+                <p class="text-slate-400 font-medium">Auto-Monitoring</p>
+                <p class="font-bold text-emerald-700 mt-1 flex items-center space-x-1">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>Every 5 Mins</span>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Train Route & Station Stops Section -->
+          <div class="p-6 border-t border-slate-100 space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center space-x-1.5">
+                <i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-600"></i>
+                <span>Train Route &amp; Station Stops</span>
+              </h3>
+              <span id="route-count-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
+                ${(p.route && p.route.length > 0) ? `${p.route.length} Stations` : 'Loading Stops...'}
+              </span>
+            </div>
+
+            <div id="route-timeline-container" class="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80">
+              ${(p.route && p.route.length > 0) 
+                ? generateRouteTimelineHtml(p.route, p.fromStation, p.toStation, p.fromCode, p.toCode)
+                : `<div class="py-3 flex items-center space-x-2 text-xs text-slate-500">
+                     <i data-lucide="loader-2" class="w-4 h-4 animate-spin text-emerald-600"></i>
+                     <span>Fetching train route and station stops...</span>
+                   </div>`
+              }
+            </div>
+          </div>
+
+          <!-- Live Audit History Timeline -->
+          <div class="p-6 border-t border-slate-100 space-y-3">
+            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center space-x-1.5">
+              <i data-lucide="history" class="w-3.5 h-3.5 text-slate-500"></i>
+              <span>Live Update Timeline</span>
+            </h3>
+            <div class="space-y-2.5 bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80">
+              ${historyHtml}
+            </div>
+          </div>
+
+          <!-- Footer Actions -->
+          <div class="p-6 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-50/40">
+            <button onclick="showDashboardView()" class="px-5 py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition inline-flex items-center justify-center space-x-1.5 min-h-[44px]">
+              <i data-lucide="arrow-left" class="w-4 h-4"></i>
+              <span>Back to Tickets</span>
+            </button>
+
+            <div class="flex items-center space-x-2">
+              <button onclick="checkPnrNow('${p.pnr}', true)" class="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition inline-flex items-center justify-center space-x-1.5 min-h-[44px]">
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                <span>Check Status Now</span>
+              </button>
+
+              <button onclick="deletePnr('${p.pnr}')" class="px-3 py-2.5 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 transition inline-flex items-center justify-center space-x-1 min-h-[44px]">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                <span>Remove</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      `;
+
+      if (!p.route || p.route.length === 0) {
+        loadRouteForPnr(p.pnr);
+      }
+
+      lucide.createIcons();
+    }
+
+    // Render Dashboard Ticket Cards
     function renderTickets() {
       const container = document.getElementById('tickets-container');
       const emptyState = document.getElementById('empty-state');
@@ -410,8 +849,9 @@
         `).join('');
 
         return `
-          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50">
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:border-emerald-300 transition-all">
+            <!-- Clickable Header that opens Full Details -->
+            <div onclick="showPnrDetails('${p.pnr}')" class="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50 cursor-pointer hover:bg-emerald-50/40 transition">
               <div class="flex items-center space-x-3 min-w-0">
                 <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-100 text-emerald-800 font-extrabold flex items-center justify-center text-xs shrink-0">
                   ${p.class || '3A'}
@@ -427,6 +867,11 @@
                   </div>
                   <p class="text-xs text-slate-600 font-medium mt-0.5 truncate">Train ${p.trainNumber} &bull; ${p.trainName}</p>
                 </div>
+              </div>
+
+              <div class="text-emerald-700 text-xs font-bold flex items-center space-x-1 shrink-0">
+                <span class="hidden sm:inline">Details</span>
+                <i data-lucide="chevron-right" class="w-4 h-4"></i>
               </div>
             </div>
 
@@ -452,11 +897,18 @@
               </div>
 
               <!-- Action Bar -->
-              <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                <button onclick="checkPnrNow('${p.pnr}')" class="px-3.5 py-2 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition inline-flex items-center space-x-1.5 min-h-[40px]" title="Check Live Status Now">
-                  <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-                  <span>Check Status Now</span>
-                </button>
+              <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
+                <div class="flex items-center space-x-2">
+                  <button onclick="showPnrDetails('${p.pnr}')" class="px-3.5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition inline-flex items-center space-x-1.5 shadow-sm min-h-[40px]" title="View Full Train and Journey Details">
+                    <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                    <span>Full Details &rarr;</span>
+                  </button>
+
+                  <button onclick="checkPnrNow('${p.pnr}')" class="px-3.5 py-2 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition inline-flex items-center space-x-1.5 min-h-[40px]" title="Check Live Status Now">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                    <span>Check Status</span>
+                  </button>
+                </div>
 
                 <button onclick="deletePnr('${p.pnr}')" class="px-2.5 py-1.5 text-xs text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition inline-flex items-center space-x-1" title="Delete Ticket">
                   <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
