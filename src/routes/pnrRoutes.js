@@ -5,24 +5,48 @@ const pnrService = require('../services/pnrService');
 const notificationService = require('../services/notificationService');
 const sse = require('../services/sseEmitter');
 
-// GET all tracked PNRs
+// Extract client device identifier from header, query, or body
+function getDeviceId(req) {
+  return req.headers['x-device-id'] || req.query.deviceId || (req.body && req.body.deviceId) || '';
+}
+
+// Check if a PNR belongs to this device
+function belongsToDevice(pnrObj, deviceId) {
+  if (!pnrObj || !deviceId) return false;
+  if (pnrObj.deviceId === deviceId) return true;
+  if (Array.isArray(pnrObj.deviceIds) && pnrObj.deviceIds.includes(deviceId)) return true;
+  return false;
+}
+
+// GET all tracked PNRs for this device only
 router.get('/', (req, res) => {
-  res.json({ success: true, pnrs: db.getPnrs() });
+  const deviceId = getDeviceId(req);
+  if (!deviceId) {
+    // If no device ID is sent, return an empty list for privacy protection
+    return res.json({ success: true, pnrs: [] });
+  }
+
+  const allPnrs = db.getPnrs();
+  const devicePnrs = allPnrs.filter(p => belongsToDevice(p, deviceId));
+
+  res.json({ success: true, pnrs: devicePnrs });
 });
 
-// GET single PNR
+// GET single PNR (device-scoped)
 router.get('/:pnr', (req, res) => {
+  const deviceId = getDeviceId(req);
   const pnr = db.getPnr(req.params.pnr);
-  if (!pnr) {
-    return res.status(404).json({ success: false, error: 'PNR not found' });
+  if (!pnr || !belongsToDevice(pnr, deviceId)) {
+    return res.status(404).json({ success: false, error: 'PNR not found on your device' });
   }
   res.json({ success: true, pnr });
 });
 
-// POST register new PNR
+// POST register new PNR (associated with device)
 router.post('/', async (req, res) => {
   try {
     const { pnr, phoneNumber, email, callmebotApiKey } = req.body;
+    const deviceId = getDeviceId(req);
 
     if (!pnr || !/^\d{10}$/.test(pnr.trim())) {
       return res.status(400).json({
@@ -35,6 +59,13 @@ router.post('/', async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'Please provide at least a phone number or email address for updates.'
+      });
+    }
+
+    if (!deviceId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Device identification missing. Please refresh your browser.'
       });
     }
 
@@ -52,10 +83,37 @@ router.post('/', async (req, res) => {
 
     const cleanPnr = pnr.trim();
     const existing = db.getPnr(cleanPnr);
+
     if (existing) {
-      return res.status(409).json({
-        success: false,
-        error: 'This PNR is already being tracked in the system.'
+      if (belongsToDevice(existing, deviceId)) {
+        return res.status(409).json({
+          success: false,
+          error: 'This PNR is already being tracked on your device.'
+        });
+      }
+
+      // Claim / link this PNR to the current device
+      if (!Array.isArray(existing.deviceIds)) {
+        existing.deviceIds = existing.deviceId ? [existing.deviceId] : [];
+      }
+      if (!existing.deviceIds.includes(deviceId)) {
+        existing.deviceIds.push(deviceId);
+      }
+      if (!existing.deviceId) {
+        existing.deviceId = deviceId;
+      }
+      if (phoneNumber) existing.phoneNumber = phoneNumber.trim();
+      if (email) existing.email = email.trim();
+
+      db.savePnr(existing);
+      sse.broadcast('pnr_added', existing, existing.deviceIds);
+
+      await notificationService.sendPnrRegistrationNotification(existing);
+
+      return res.status(200).json({
+        success: true,
+        message: 'PNR linked to your device! Real-time alerts activated.',
+        pnr: existing
       });
     }
 
@@ -65,8 +123,11 @@ router.post('/', async (req, res) => {
       email: email ? email.trim() : ''
     });
 
+    newPnrObj.deviceId = deviceId;
+    newPnrObj.deviceIds = [deviceId];
+
     db.savePnr(newPnrObj);
-    sse.broadcast('pnr_added', newPnrObj);
+    sse.broadcast('pnr_added', newPnrObj, newPnrObj.deviceIds);
 
     // Immediately dispatch welcome / registration confirmation message to user
     await notificationService.sendPnrRegistrationNotification(newPnrObj);
@@ -82,69 +143,61 @@ router.post('/', async (req, res) => {
   }
 });
 
-// DELETE tracked PNR
+// DELETE tracked PNR (from this device)
 router.delete('/:pnr', (req, res) => {
-  const deleted = db.deletePnr(req.params.pnr);
-  if (!deleted) {
-    return res.status(404).json({ success: false, error: 'PNR not found' });
+  const deviceId = getDeviceId(req);
+  const existing = db.getPnr(req.params.pnr);
+  if (!existing || !belongsToDevice(existing, deviceId)) {
+    return res.status(404).json({ success: false, error: 'PNR not found on your device' });
   }
-  sse.broadcast('pnr_deleted', { pnr: req.params.pnr });
-  res.json({ success: true, message: 'PNR removed from tracking.' });
+
+  if (Array.isArray(existing.deviceIds)) {
+    existing.deviceIds = existing.deviceIds.filter(id => id !== deviceId);
+    if (existing.deviceIds.length === 0) {
+      db.deletePnr(req.params.pnr);
+    } else {
+      if (existing.deviceId === deviceId) {
+        existing.deviceId = existing.deviceIds[0];
+      }
+      db.savePnr(existing);
+    }
+  } else {
+    db.deletePnr(req.params.pnr);
+  }
+
+  sse.broadcast('pnr_deleted', { pnr: req.params.pnr }, deviceId);
+  res.json({ success: true, message: 'PNR removed from your tracking.' });
 });
 
 // POST toggle tracking status
 router.post('/:pnr/toggle', (req, res) => {
+  const deviceId = getDeviceId(req);
   const pnr = db.getPnr(req.params.pnr);
-  if (!pnr) {
-    return res.status(404).json({ success: false, error: 'PNR not found' });
+  if (!pnr || !belongsToDevice(pnr, deviceId)) {
+    return res.status(404).json({ success: false, error: 'PNR not found on your device' });
   }
   pnr.active = !pnr.active;
   db.savePnr(pnr);
-  sse.broadcast('pnr_updated', pnr);
+  sse.broadcast('pnr_updated', pnr, pnr.deviceIds || pnr.deviceId);
   res.json({ success: true, pnr });
 });
 
 // POST trigger manual check for this PNR
 router.post('/:pnr/check', async (req, res) => {
   try {
+    const deviceId = getDeviceId(req);
+    const existing = db.getPnr(req.params.pnr);
+    if (!existing || !belongsToDevice(existing, deviceId)) {
+      return res.status(404).json({ success: false, error: 'PNR not found on your device' });
+    }
+
     const result = await pnrService.checkPnr(req.params.pnr);
     if (!result) {
       return res.status(404).json({ success: false, error: 'PNR not found or inactive' });
     }
-    sse.broadcast('pnr_updated', result.pnr);
+    sse.broadcast('pnr_updated', result.pnr, result.pnr.deviceIds || result.pnr.deviceId);
     res.json({
       success: true,
-      diff: result.diff,
-      pnr: result.pnr
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// POST simulate transition (waitlist-drop, confirm, chart-prepared)
-router.post('/:pnr/simulate', async (req, res) => {
-  try {
-    const { action } = req.body;
-    let result = null;
-
-    if (action === 'waitlist-drop') {
-      result = await pnrService.simulateWaitlistDrop(req.params.pnr);
-    } else if (action === 'confirm') {
-      result = await pnrService.simulateConfirmTicket(req.params.pnr);
-    } else if (action === 'chart-prepared') {
-      result = await pnrService.simulateChartPrepared(req.params.pnr);
-    } else {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid simulation action. Choose waitlist-drop, confirm, or chart-prepared.'
-      });
-    }
-
-    sse.broadcast('pnr_updated', result.pnr);
-    res.json({
-      success: true,
-      message: `Simulated action "${action}" executed.`,
       diff: result.diff,
       pnr: result.pnr
     });

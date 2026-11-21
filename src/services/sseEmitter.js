@@ -3,20 +3,28 @@ const EventEmitter = require('events');
 class SSEBroadcaster extends EventEmitter {
   constructor() {
     super();
-    this.clients = new Set();
+    this.clients = new Map(); // res -> deviceId
   }
 
-  addClient(res) {
-    this.clients.add(res);
+  addClient(res, deviceId = null) {
+    this.clients.set(res, deviceId);
     res.on('close', () => {
       this.clients.delete(res);
     });
   }
 
-  broadcast(eventType, data) {
+  broadcast(eventType, data, targetDeviceId = null) {
     const payload = `event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`;
-    for (const client of this.clients) {
+    for (const [client, clientDeviceId] of this.clients.entries()) {
       try {
+        // If targetDeviceId specified, only send to matching device
+        if (targetDeviceId) {
+          if (Array.isArray(targetDeviceId)) {
+            if (clientDeviceId && !targetDeviceId.includes(clientDeviceId)) continue;
+          } else if (clientDeviceId && clientDeviceId !== targetDeviceId) {
+            continue;
+          }
+        }
         client.write(payload);
       } catch (err) {
         console.error('Error writing to SSE client:', err);

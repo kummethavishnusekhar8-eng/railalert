@@ -3,12 +3,32 @@ const router = express.Router();
 const db = require('../db');
 const notificationService = require('../services/notificationService');
 
-// GET notification audit history
+// Check if a PNR belongs to this device
+function belongsToDevice(pnrObj, deviceId) {
+  if (!pnrObj || !deviceId) return false;
+  if (pnrObj.deviceId === deviceId) return true;
+  if (Array.isArray(pnrObj.deviceIds) && pnrObj.deviceIds.includes(deviceId)) return true;
+  return false;
+}
+
+// GET notification audit history (filtered by device's PNRs)
 router.get('/', (req, res) => {
+  const deviceId = req.headers['x-device-id'] || req.query.deviceId;
+  if (!deviceId) {
+    return res.json({ success: true, notifications: [] });
+  }
+
+  const userPnrs = new Set(
+    db.getPnrs()
+      .filter(p => belongsToDevice(p, deviceId))
+      .map(p => p.pnr)
+  );
+
   const limit = parseInt(req.query.limit, 10) || 100;
+  const filtered = db.getNotifications(limit).filter(n => userPnrs.has(n.pnr));
   res.json({
     success: true,
-    notifications: db.getNotifications(limit)
+    notifications: filtered
   });
 });
 
@@ -50,64 +70,11 @@ router.post('/test', async (req, res) => {
       );
       return res.json({
         success: waRes.success,
-        message: waRes.success ? 'Free WhatsApp test message dispatched!' : waRes.error
+        message: waRes.success ? `WhatsApp test message dispatched to ${phone}` : waRes.error
       });
     }
 
-    // Direct test for Telegram Bot
-    if (type === 'telegram') {
-      const token = botToken || settings.telegram?.botToken;
-      const chat = chatId || recipient || settings.telegram?.chatId;
-      if (!token || !chat) {
-        return res.status(400).json({
-          success: false,
-          error: 'Please provide your Telegram Bot Token and Chat ID.'
-        });
-      }
-      const teleRes = await notificationService.sendTelegramMessage(
-        token,
-        chat,
-        '🚆 *RailAlert Telegram Test*\nYour free PNR status updater is connected to Telegram!'
-      );
-      return res.json({
-        success: teleRes.success,
-        message: teleRes.success ? 'Telegram test message sent!' : teleRes.error
-      });
-    }
-
-    // Default multi-channel test
-    const samplePnr = {
-      pnr: '2847291845',
-      trainNumber: '12952',
-      trainName: 'Tejas Rajdhani Express',
-      fromStation: 'NDLS (New Delhi)',
-      toStation: 'MMCT (Mumbai Central)',
-      dateOfJourney: '28-Nov-2026',
-      class: '3A',
-      chartPrepared: true,
-      passengers: [
-        {
-          number: 1,
-          name: 'Primary Passenger',
-          bookingStatus: 'WL 14',
-          currentStatus: 'CNF',
-          coach: 'B3',
-          berth: 28,
-          berthType: 'Side Lower'
-        }
-      ],
-      email: type === 'email' ? recipient : null,
-      phoneNumber: (type === 'sms' || type === 'whatsapp') ? recipient : null
-    };
-
-    const summary = 'Test Alert: Status changed from WL 14 to CNF (Coach B3, Berth 28)';
-    const results = await notificationService.sendPnrUpdateNotification(samplePnr, summary);
-
-    res.json({
-      success: true,
-      message: `Test notification dispatched.`,
-      results
-    });
+    res.status(400).json({ success: false, error: 'Unknown notification test type' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

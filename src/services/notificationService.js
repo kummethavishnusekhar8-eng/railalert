@@ -322,7 +322,7 @@ async function sendPnrUpdateNotification(pnrData, changeSummary) {
     pnr: pnrData,
     changeSummary,
     notification: inAppRecord
-  });
+  }, pnrData.deviceIds || pnrData.deviceId);
   results.inApp = inAppRecord;
 
   // 2. Mobile Phone Push (ntfy.sh - Zero setup, instant phone buzz)

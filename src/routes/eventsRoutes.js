@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const sse = require('../services/sseEmitter');
 
-// SSE endpoint for live real-time updates
+// SSE endpoint for live real-time updates filtered by device
 router.get('/', (req, res) => {
+  const deviceId = req.query.deviceId || req.headers['x-device-id'] || null;
+
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -12,7 +14,7 @@ router.get('/', (req, res) => {
 
   res.write('event: connected\ndata: {"status":"connected"}\n\n');
 
-  sse.addClient(res);
+  sse.addClient(res, deviceId);
 
   // Send a heartbeat every 25 seconds to keep connection alive
   const heartbeat = setInterval(() => {
