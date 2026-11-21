@@ -7,24 +7,17 @@ const sse = require('./sseEmitter');
 /**
  * Creates email transporter based on settings (Free Gmail SMTP or Custom)
  */
-function getTransporter(emailSettings) {
-  if (emailSettings.user && emailSettings.pass) {
-    if (emailSettings.service === 'gmail') {
-      return nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: emailSettings.user,
-          pass: emailSettings.pass
-        }
-      });
-    }
+function getTransporter(emailSettings = {}) {
+  const user = (process.env.GMAIL_USER || process.env.EMAIL_USER || emailSettings.user || '').trim();
+  const rawPass = (process.env.GMAIL_APP_PASSWORD || process.env.EMAIL_PASS || emailSettings.pass || '').trim();
+  const pass = rawPass.replace(/\s+/g, '');
+
+  if (user && pass) {
     return nodemailer.createTransport({
-      host: emailSettings.host || 'smtp.ethereal.email',
-      port: Number(emailSettings.port) || 587,
-      secure: Boolean(emailSettings.secure),
+      service: 'gmail',
       auth: {
-        user: emailSettings.user,
-        pass: emailSettings.pass
+        user: user,
+        pass: pass
       }
     });
   }
@@ -362,9 +355,11 @@ async function sendPnrUpdateNotification(pnrData, changeSummary) {
 
   // 3. Free WhatsApp via CallMeBot (if enabled or if phone provided)
   const waText = generateWhatsAppText(pnrData, changeSummary, passengers);
-  if (settings.callmebot?.enabled && settings.callmebot?.apiKey && (pnrData.phoneNumber || settings.callmebot?.phone)) {
-    const targetPhone = pnrData.phoneNumber || settings.callmebot.phone;
-    const waRes = await sendCallMeBotWhatsApp(targetPhone, settings.callmebot.apiKey, waText);
+  const callMeBotKey = (settings.callmebot?.apiKey || process.env.CALLMEBOT_API_KEY || '').trim();
+  const targetPhone = pnrData.phoneNumber || settings.callmebot?.phone;
+
+  if (callMeBotKey && targetPhone) {
+    const waRes = await sendCallMeBotWhatsApp(targetPhone, callMeBotKey, waText);
 
     const callMeBotRecord = {
       id: uuidv4(),
@@ -379,20 +374,20 @@ async function sendPnrUpdateNotification(pnrData, changeSummary) {
     };
     db.addNotification(callMeBotRecord);
     results.whatsapp = callMeBotRecord;
-  } else if (pnrData.phoneNumber && (!settings.sms?.accountSid)) {
-    // If phone number is given without paid Twilio keys, provide free WhatsApp / SMS preview in log
-    const freeWaRecord = {
+  } else if (pnrData.phoneNumber) {
+    const notConfiguredRecord = {
       id: uuidv4(),
       pnr: pnrData.pnr,
       type: 'whatsapp',
       recipient: pnrData.phoneNumber,
-      title: `WhatsApp Alert Preview`,
+      title: `WhatsApp Alert`,
       message: waText,
-      status: 'delivered (simulated free)',
+      status: 'not_configured',
+      error: 'CallMeBot key not configured. Use instant 1-Click WhatsApp on screen.',
       timestamp: notificationTime
     };
-    db.addNotification(freeWaRecord);
-    results.whatsapp = freeWaRecord;
+    db.addNotification(notConfiguredRecord);
+    results.whatsapp = notConfiguredRecord;
   }
 
   // 4. Free Telegram Bot Alert (if enabled)
@@ -433,21 +428,22 @@ async function sendPnrUpdateNotification(pnrData, changeSummary) {
 
     if (transporter) {
       try {
-        const info = await transporter.sendMail({
-          from: settings.email.from || `"RailAlert Bot" <${settings.email.user}>`,
+        const sender = process.env.GMAIL_USER || process.env.EMAIL_USER || settings.email?.user || 'notifications@railalert.internal';
+        await transporter.sendMail({
+          from: settings.email.from || `"RailAlert Bot" <${sender}>`,
           to: pnrData.email,
           subject: emailSubject,
           html: emailHtml
         });
-        previewUrl = nodemailer.getTestMessageUrl(info) || null;
+        emailStatus = 'delivered';
       } catch (err) {
         console.error('Email sending error:', err);
         emailStatus = 'failed';
         emailError = err.message;
       }
     } else {
-      // Free simulated preview
-      emailStatus = 'delivered (free simulation)';
+      emailStatus = 'not_configured';
+      emailError = 'Gmail credentials not configured in Settings.';
     }
 
     const emailRecord = {
@@ -545,13 +541,15 @@ async function sendPnrRegistrationNotification(pnrData) {
   if (pnrData.phoneNumber) {
     let waStatus = 'delivered';
     let waError = null;
+    const callMeBotKey = (settings.callmebot?.apiKey || process.env.CALLMEBOT_API_KEY || '').trim();
 
-    if (settings.callmebot?.enabled && settings.callmebot?.apiKey) {
-      const waRes = await sendCallMeBotWhatsApp(pnrData.phoneNumber, settings.callmebot.apiKey, welcomeText);
+    if (callMeBotKey) {
+      const waRes = await sendCallMeBotWhatsApp(pnrData.phoneNumber, callMeBotKey, welcomeText);
       waStatus = waRes.success ? 'delivered' : 'failed';
       waError = waRes.error || null;
     } else {
-      waStatus = 'delivered (free simulation)';
+      waStatus = 'not_configured';
+      waError = 'CallMeBot WhatsApp key not configured. Tap Open on WhatsApp on screen.';
     }
 
     const waRecord = {
@@ -599,19 +597,23 @@ async function sendPnrRegistrationNotification(pnrData) {
     `;
 
     let emailStatus = 'delivered';
+    let emailError = null;
     if (transporter) {
       try {
+        const sender = process.env.GMAIL_USER || process.env.EMAIL_USER || settings.email?.user || 'notifications@railalert.internal';
         await transporter.sendMail({
-          from: settings.email.from || `"RailAlert Bot" <${settings.email.user}>`,
+          from: settings.email.from || `"RailAlert Bot" <${sender}>`,
           to: pnrData.email,
           subject: emailSubject,
           html: emailHtml
         });
       } catch (err) {
         emailStatus = 'failed';
+        emailError = err.message;
       }
     } else {
-      emailStatus = 'delivered (free simulation)';
+      emailStatus = 'not_configured';
+      emailError = 'Gmail credentials not configured in Settings.';
     }
 
     const emailRecord = {
@@ -622,6 +624,7 @@ async function sendPnrRegistrationNotification(pnrData) {
       title: emailSubject,
       message: `Tracking started for PNR ${pnrData.pnr}. We will email you status updates automatically.`,
       status: emailStatus,
+      error: emailError,
       timestamp: notificationTime,
       previewContent: emailHtml
     };

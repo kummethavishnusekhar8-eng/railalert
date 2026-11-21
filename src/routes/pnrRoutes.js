@@ -45,7 +45,7 @@ router.get('/:pnr', (req, res) => {
 // POST register new PNR (associated with device)
 router.post('/', async (req, res) => {
   try {
-    const { pnr, phoneNumber, email, callmebotApiKey } = req.body;
+    const { pnr } = req.body;
     const deviceId = getDeviceId(req);
 
     if (!pnr || !/^\d{10}$/.test(pnr.trim())) {
@@ -59,18 +59,6 @@ router.post('/', async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'Device identification missing. Please refresh your browser.'
-      });
-    }
-
-    // Save CallMeBot WhatsApp API key if provided
-    if (callmebotApiKey && callmebotApiKey.trim()) {
-      const currentSettings = db.getSettings();
-      db.updateSettings({
-        callmebot: {
-          enabled: true,
-          apiKey: callmebotApiKey.trim(),
-          phone: phoneNumber ? phoneNumber.trim() : (currentSettings.callmebot?.phone || '')
-        }
       });
     }
 
@@ -95,26 +83,19 @@ router.post('/', async (req, res) => {
       if (!existing.deviceId) {
         existing.deviceId = deviceId;
       }
-      if (phoneNumber) existing.phoneNumber = phoneNumber.trim();
-      if (email) existing.email = email.trim();
 
       db.savePnr(existing);
       sse.broadcast('pnr_added', existing, existing.deviceIds);
 
-      await notificationService.sendPnrRegistrationNotification(existing);
-
       return res.status(200).json({
         success: true,
-        message: 'PNR linked to your device! Real-time alerts activated.',
+        message: 'PNR linked to your device.',
         pnr: existing
       });
     }
 
     // Fetch real live Indian Railways details & initialize PNR
-    const newPnrObj = await pnrService.registerPnr(cleanPnr, {
-      phoneNumber: phoneNumber ? phoneNumber.trim() : '',
-      email: email ? email.trim() : ''
-    });
+    const newPnrObj = await pnrService.registerPnr(cleanPnr, {});
 
     newPnrObj.deviceId = deviceId;
     newPnrObj.deviceIds = [deviceId];
@@ -122,12 +103,9 @@ router.post('/', async (req, res) => {
     db.savePnr(newPnrObj);
     sse.broadcast('pnr_added', newPnrObj, newPnrObj.deviceIds);
 
-    // Immediately dispatch welcome / registration confirmation message to user
-    await notificationService.sendPnrRegistrationNotification(newPnrObj);
-
     res.status(201).json({
       success: true,
-      message: 'PNR registered! Confirmation message dispatched to your contact.',
+      message: 'PNR registered successfully.',
       pnr: newPnrObj
     });
   } catch (err) {

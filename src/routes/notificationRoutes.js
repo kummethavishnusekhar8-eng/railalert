@@ -74,6 +74,53 @@ router.post('/test', async (req, res) => {
       });
     }
 
+    // Direct test for Gmail / SMTP
+    if (type === 'email') {
+      const emailRecipient = recipient || req.body.email;
+      const user = (req.body.user || settings.email?.user || process.env.GMAIL_USER || '').trim();
+      const rawPass = (req.body.pass || settings.email?.pass || process.env.GMAIL_APP_PASSWORD || '').trim();
+      const pass = rawPass.replace(/\s+/g, '');
+
+      if (!emailRecipient) {
+        return res.status(400).json({ success: false, error: 'Please enter a recipient email address.' });
+      }
+      if (!user || !pass) {
+        return res.status(400).json({
+          success: false,
+          error: 'Gmail sender credentials missing. Please provide your Gmail and Google App Password.'
+        });
+      }
+
+      const nodemailer = require('nodemailer');
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user, pass }
+      });
+
+      try {
+        await transporter.verify();
+        await transporter.sendMail({
+          from: `"RailAlert PNR Bot" <${user}>`,
+          to: emailRecipient,
+          subject: '🚆 [RailAlert Test] Gmail Connection Verified!',
+          html: `<div style="font-family: sans-serif; padding: 20px; max-width: 500px; border: 1px solid #e2e8f0; border-radius: 8px;">
+            <h2 style="color: #059669; margin-top: 0;">✓ RailAlert Email Connected!</h2>
+            <p>Your Gmail sender account is authenticated and active.</p>
+            <p>Automated Indian Railways PNR alerts will now be delivered directly to your inbox whenever seat status changes!</p>
+          </div>`
+        });
+        return res.json({
+          success: true,
+          message: `Test email successfully sent to ${emailRecipient}! Check your inbox.`
+        });
+      } catch (err) {
+        return res.status(500).json({
+          success: false,
+          error: `Gmail error: ${err.message}. Ensure 2-Step Verification is ON and you are using a 16-character Google App Password.`
+        });
+      }
+    }
+
     res.status(400).json({ success: false, error: 'Unknown notification test type' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
