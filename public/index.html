@@ -281,6 +281,17 @@
       return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     }
 
+    // Format Journey Duration e.g. "34:53" -> "34h 53m"
+    function formatDuration(d) {
+      if (!d) return 'Direct Route';
+      const str = String(d).trim();
+      const m = str.match(/^(\d+):(\d+)$/);
+      if (m) {
+        return `${m[1]}h ${m[2]}m`;
+      }
+      return str;
+    }
+
     // PWA Install Prompt Handler
     let deferredPrompt = null;
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -441,7 +452,7 @@
             ticketsContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           }
         } else {
-          showToast('Notice', data.error || 'Failed to fetch PNR', false);
+          showToast('IRCTC Response', data.error || 'Failed to fetch PNR from Indian Railways', false);
         }
       } catch (err) {
         showToast('Error', err.message, false);
@@ -764,7 +775,7 @@
               <!-- Journey Center Track -->
               <div class="text-center py-2 sm:py-0">
                 <p class="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-0.5 inline-block mb-1">
-                  ${p.duration ? p.duration : 'Direct Route'}
+                  ${p.duration ? formatDuration(p.duration) : 'Direct Route'}
                 </p>
                 <div class="relative flex items-center justify-center my-1">
                   <div class="h-0.5 w-full bg-slate-200"></div>

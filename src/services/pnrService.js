@@ -142,39 +142,59 @@ function fetchRealIrctcPnr(pnrNumber) {
               const route = await fetchTrainRoute(p.trainNo);
 
               return resolve({
-                trainNumber: p.trainNo,
-                trainName: p.trainName || 'Express',
-                fromStation: p.boardingStationName || p.from || p.boardingPoint || 'Origin',
-                toStation: p.reservationUptoName || p.to || p.reservationUpto || 'Destination',
-                fromCode: p.from || '',
-                toCode: p.to || '',
-                departureTime: p.departureTime || '',
-                arrivalTime: p.arrivalTime || '',
-                duration: p.duration || '',
-                expectedPlatformNo: p.expectedPlatformNo || '',
-                quota: p.quota || 'GN',
-                bookingDate: p.bookingDate || '',
-                dateOfJourney: p.doj,
-                class: p.class || '3A',
-                chartPrepared: Boolean(p.chartPrepared),
-                route: route || [],
-                passengers: passengers.length > 0 ? passengers : [
-                  { number: 1, name: 'Passenger 1', bookingStatus: 'CNF', currentStatus: 'CNF', coach: null, berth: null, berthType: null }
-                ]
+                success: true,
+                data: {
+                  trainNumber: p.trainNo,
+                  trainName: p.trainName || 'Express',
+                  fromStation: p.boardingStationName || p.from || p.boardingPoint || 'Origin',
+                  toStation: p.reservationUptoName || p.to || p.reservationUpto || 'Destination',
+                  fromCode: p.from || '',
+                  toCode: p.to || '',
+                  departureTime: p.departureTime || '',
+                  arrivalTime: p.arrivalTime || '',
+                  duration: p.duration || '',
+                  expectedPlatformNo: p.expectedPlatformNo || '',
+                  quota: p.quota || 'GN',
+                  bookingDate: p.bookingDate || '',
+                  dateOfJourney: p.doj,
+                  class: p.class || '3A',
+                  chartPrepared: Boolean(p.chartPrepared),
+                  route: route || [],
+                  passengers: passengers.length > 0 ? passengers : [
+                    { number: 1, name: 'Passenger 1', bookingStatus: 'CNF', currentStatus: 'CNF', coach: null, berth: null, berthType: null }
+                  ]
+                }
+              });
+            }
+
+            // If IRCTC returned an explicit message or error (e.g. Flushed PNR, Invalid PNR)
+            if (p && !p.trainNo) {
+              const errText = p.error || p.informationMessage || 'Flushed PNR / PNR not yet generated';
+              return resolve({
+                success: false,
+                error: errText,
+                isFlushed: Boolean(errText && /flush/i.test(errText))
+              });
+            }
+
+            if (json.message || json.errorMessage) {
+              return resolve({
+                success: false,
+                error: json.message || json.errorMessage
               });
             }
           }
-          resolve(null);
+          resolve({ success: false, error: 'Flushed PNR / PNR not found in railway PRS system' });
         } catch {
-          resolve(null);
+          resolve({ success: false, error: 'Invalid response from IRCTC PRS server' });
         }
       });
     });
 
-    req.on('error', () => resolve(null));
+    req.on('error', (err) => resolve({ success: false, error: 'Could not connect to railway network: ' + err.message }));
     req.setTimeout(8000, () => {
       req.destroy();
-      resolve(null);
+      resolve({ success: false, error: 'IRCTC PRS server timed out. Please try again.' });
     });
     req.write(postData);
     req.end();
@@ -228,9 +248,20 @@ function createFallbackPnr(pnrNumber) {
  * Register a PNR: Fetches REAL LIVE data first!
  */
 async function registerPnr(pnrNumber, contactDetails) {
-  // 1. Fetch real live railway data
-  const realData = await fetchRealIrctcPnr(pnrNumber);
-  const base = realData || createFallbackPnr(pnrNumber);
+  // 1. Fetch real live railway data directly from IRCTC backend
+  const result = await fetchRealIrctcPnr(pnrNumber);
+
+  if (!result || !result.success || !result.data) {
+    const rawError = result ? result.error : 'Flushed PNR / PNR not yet generated';
+    const errorMsg = /flush/i.test(rawError)
+      ? `${rawError} (Indian Railways archives and flushes PNRs after journey completion)`
+      : rawError;
+    const err = new Error(errorMsg);
+    err.isFlushed = result?.isFlushed;
+    throw err;
+  }
+
+  const base = result.data;
 
   return {
     pnr: pnrNumber.trim(),
@@ -257,7 +288,7 @@ async function registerPnr(pnrNumber, contactDetails) {
     lastChecked: new Date().toISOString(),
     lastStatusChange: new Date().toISOString(),
     createdAt: new Date().toISOString(),
-    isRealData: Boolean(realData),
+    isRealData: true,
     history: [
       {
         timestamp: new Date().toISOString(),
@@ -315,10 +346,11 @@ async function checkPnr(pnrNumber) {
   if (!existing || !existing.active) return null;
 
   // Always attempt to fetch real live updates from Indian Railways
-  const liveData = await fetchRealIrctcPnr(pnrNumber);
+  const liveResult = await fetchRealIrctcPnr(pnrNumber);
   let updatedSnapshot = { ...existing };
 
-  if (liveData) {
+  if (liveResult && liveResult.success && liveResult.data) {
+    const liveData = liveResult.data;
     updatedSnapshot.trainNumber = liveData.trainNumber;
     updatedSnapshot.trainName = liveData.trainName;
     updatedSnapshot.fromStation = liveData.fromStation;

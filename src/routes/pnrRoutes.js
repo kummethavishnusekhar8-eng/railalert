@@ -130,8 +130,8 @@ router.post('/', async (req, res) => {
       pnr: newPnrObj
     });
   } catch (err) {
-    console.error('Error adding PNR:', err);
-    res.status(500).json({ success: false, error: err.message });
+    console.error('Error adding PNR:', err.message);
+    res.status(400).json({ success: false, error: err.message });
   }
 });
 
